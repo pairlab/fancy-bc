@@ -12,12 +12,13 @@ import torch.nn.functional as F
 # requires diffusers==0.11.1
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.schedulers.scheduling_ddim import DDIMScheduler
-from diffusers.training_utils import EMAModel
+# from diffusers.training_utils import EMAModel
 
 import robomimic.models.obs_nets as ObsNets
 import robomimic.utils.tensor_utils as TensorUtils
 import robomimic.utils.torch_utils as TorchUtils
 import robomimic.utils.obs_utils as ObsUtils
+from robomimic.utils.ema_model import EMAModel
 
 from robomimic.algo import register_algo_factory_func, PolicyAlgo
 
@@ -361,7 +362,7 @@ class DiffusionPolicyUNet(PolicyAlgo):
                 timestep=k,
                 sample=naction
             ).prev_sample
-
+        
         # process action using Ta
         start = To - 1
         end = start + Ta

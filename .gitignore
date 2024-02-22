@@ -123,3 +123,7 @@ venv.bak/
 
 # private macros
 macros_private.py
+
+bc_trained_models
+commands.sh
+diffusion_policy_trained_models
