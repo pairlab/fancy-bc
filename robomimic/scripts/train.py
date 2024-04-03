@@ -77,18 +77,22 @@ def train(config, device):
         if not os.path.exists(dataset_path):
             raise Exception("Dataset at provided path {} not found!".format(dataset_path))
 
-        # load basic metadata from training file
-        print("\n============= Loaded Environment Metadata =============")
-        env_meta = FileUtils.get_env_metadata_from_dataset(dataset_path=dataset_path, ds_format=ds_format)
+        if config.train.load_env_meta:
+            # load basic metadata from training file
+            print("\n============= Loaded Environment Metadata =============")
+            env_meta = FileUtils.get_env_metadata_from_dataset(dataset_path=dataset_path, ds_format=ds_format)
 
-        # populate language instruction for env in env_meta
-        env_meta["lang"] = dataset_cfg.get("lang", "dummy")
+            # populate language instruction for env in env_meta
+            # env_meta["lang"] = dataset_cfg.get("lang", "dummy")
 
-        # update env meta if applicable
-        from robomimic.utils.script_utils import deep_update
-        deep_update(env_meta, config.experiment.env_meta_update_dict)
-        env_meta_list.append(env_meta)
+            # update env meta if applicable
+            from robomimic.utils.script_utils import deep_update
+            deep_update(env_meta, config.experiment.env_meta_update_dict)
+            env_meta_list.append(env_meta)
 
+        else:
+            env_meta = {"env_name": "dummy"}
+            assert not config.experiment.rollout.enabled, "cannot perform rollout without env_meta"
         shape_meta = FileUtils.get_shape_metadata_from_dataset(
             dataset_path=dataset_path,
             action_keys=config.train.action_keys,
@@ -427,7 +431,7 @@ def main(args):
         config = config_factory(args.algo)
 
     if args.dataset is not None:
-        config.train.data = args.dataset
+        config.train.data = [{"path": args.dataset}]
 
     if args.name is not None:
         config.experiment.name = args.name

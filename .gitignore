@@ -7,6 +7,9 @@ dist/
 
 # local test dataset that is lazily downloaded by example scripts
 tests/assets/test.hdf5
+tests/assets/
+
+*_trained_models/
 
 # pycharm configs
 .idea/
@@ -90,6 +93,9 @@ target/
 
 # pyenv
 .python-version
+
+# vscode
+*.vscode
 
 # celery beat schedule file
 celerybeat-schedule

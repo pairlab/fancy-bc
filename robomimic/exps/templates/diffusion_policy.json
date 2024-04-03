@@ -28,7 +28,7 @@
         "keep_all_videos": false,
         "video_skip": 5,
         "rollout": {
-            "enabled": true,
+            "enabled": false,
             "n": 50,
             "horizon": 400,
             "rate": 50,
@@ -38,9 +38,11 @@
     },
     "train": {
         "data": null,
+        "load_env_meta": false,
+        "data_format": "robomimic",
         "output_dir":"../diffusion_policy_trained_models",
         "num_data_workers": 0,
-        "hdf5_cache_mode": "low_dim",
+        "hdf5_cache_mode": "all",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
         "hdf5_normalize_obs": false,
@@ -52,6 +54,8 @@
         "dataset_keys": [
             "actions"
         ],
+        "action_keys": ["actions"],
+        "action_config": {"actions": {"type": "continuous", "dim": 22}},
         "goal_mode": null,
         "cuda": true,
         "batch_size": 256,
@@ -109,13 +113,8 @@
     "observation": {
         "modalities": {
             "obs": {
-                "low_dim": [
-                    "robot0_eef_pos",
-                    "robot0_eef_quat",
-                    "robot0_gripper_qpos",
-                    "object"
-                ],
-                "rgb": [],
+                "low_dim": ["actions", "goal_dof_pos_scaled", "goal_pos", "goal_quat", "hand_joint_pos", "hand_palm_pos", "hand_palm_quat", "object_dof_pos_scaled", "object_pos", "object_quat", "object_type", "object_type_one_hot"],
+                "rgb": ["hand_camera"],
                 "depth": [],
                 "scan": []
             },
@@ -152,8 +151,8 @@
                 },
                 "obs_randomizer_class": "CropRandomizer",
                 "obs_randomizer_kwargs": {
-                    "crop_height": 76,
-                    "crop_width": 76,
+                    "crop_height": 19,
+                    "crop_width": 19,
                     "num_crops": 1,
                     "pos_enc": false
                 }

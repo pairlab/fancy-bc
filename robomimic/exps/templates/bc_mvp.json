@@ -38,7 +38,6 @@
     },
     "train": {
         "data": null,
-        "load_env_meta": false,
         "output_dir": "../bc_trained_models",
         "num_data_workers": 0,
         "hdf5_cache_mode": "all",
@@ -52,9 +51,7 @@
         "frame_stack": 1,
         "pad_frame_stack": true,
         "dataset_keys": [
-            "actions",
-            "rewards",
-            "dones"
+            "actions"
         ],
         "goal_mode": null,
         "cuda": true,
@@ -186,12 +183,24 @@
             "low_dim": {
                 "core_class": null,
                 "core_kwargs": {},
-                "obs_randomizer_class": null,
-                "obs_randomizer_kwargs": {}
+                "obs_randomizer_class": "CropRandomizer",
+                "obs_randomizer_kwargs": {
+                    "crop_height": 76,
+                    "crop_width": 76,
+                    "num_crops": 1,
+                    "pos_enc": false
+                }
             },
             "rgb": {
                 "core_class": "VisualCore",
-                "core_kwargs": {},
+                "core_kwargs": {             
+                    "backbone_class": "MVPConv",
+                    "backbone_kwargs": {
+                        "mvp_model_class": "vitb-mae-egosoup",
+                        "freeze": true
+                    },
+                    "pool_class": null 
+                },
                 "obs_randomizer_class": null,
                 "obs_randomizer_kwargs": {}
             },

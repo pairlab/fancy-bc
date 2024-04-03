@@ -28,7 +28,7 @@
         "keep_all_videos": false,
         "video_skip": 5,
         "rollout": {
-            "enabled": true,
+            "enabled": false,
             "n": 50,
             "horizon": 400,
             "rate": 50,
@@ -39,6 +39,7 @@
     "train": {
         "data": null,
         "load_env_meta": false,
+        "data_format": "robomimic",
         "output_dir": "../bc_trained_models",
         "num_data_workers": 0,
         "hdf5_cache_mode": "all",
@@ -52,10 +53,10 @@
         "frame_stack": 1,
         "pad_frame_stack": true,
         "dataset_keys": [
-            "actions",
-            "rewards",
-            "dones"
+            "actions"
         ],
+        "action_keys": ["actions"],
+        "action_config": {"actions": {"type": "continuous", "dim": 22}},
         "goal_mode": null,
         "cuda": true,
         "batch_size": 100,
@@ -165,13 +166,8 @@
     "observation": {
         "modalities": {
             "obs": {
-                "low_dim": [
-                    "robot0_eef_pos",
-                    "robot0_eef_quat",
-                    "robot0_gripper_qpos",
-                    "object"
-                ],
-                "rgb": [],
+                "low_dim": ["actions", "goal_dof_pos_scaled", "goal_pos", "goal_quat", "hand_joint_pos", "hand_palm_pos", "hand_palm_quat", "object_dof_pos_scaled", "object_pos", "object_quat", "object_type", "object_type_one_hot"],
+                "rgb": ["hand_camera"],
                 "depth": [],
                 "scan": []
             },
@@ -191,9 +187,27 @@
             },
             "rgb": {
                 "core_class": "VisualCore",
-                "core_kwargs": {},
-                "obs_randomizer_class": null,
-                "obs_randomizer_kwargs": {}
+                "core_kwargs": {             
+                    "backbone_class": "ResNet18Conv",
+                    "backbone_kwargs": {
+                        "pretrained": false,
+                        "input_coord_conv": false
+                    },
+                    "pool_class": "SpatialSoftmax",
+                    "pool_kwargs": {
+                        "num_kp": 32,
+                        "learnable_temperature": false,
+                        "temperature": 1.0,
+                        "noise_std": 0.0
+                    }
+                }, 
+                "obs_randomizer_class": "CropRandomizer",
+                "obs_randomizer_kwargs": {
+                    "crop_height": 19,
+                    "crop_width": 19,
+                    "num_crops": 1,
+                    "pos_enc": false
+                }
             },
             "depth": {
                 "core_class": "VisualCore",
