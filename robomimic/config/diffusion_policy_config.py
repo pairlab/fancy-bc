@@ -55,3 +55,33 @@ class DiffusionPolicyConfig(BaseConfig):
         self.algo.ddim.set_alpha_to_one = True
         self.algo.ddim.steps_offset = 0
         self.algo.ddim.prediction_type = 'epsilon'
+
+    def train_config(self):
+        super().train_config()
+
+        # One of ["all", "low_dim", or None]. Set to "all" to cache entire hdf5 in memory - this is 
+        # by far the fastest for data loading. Set to "low_dim" to cache all non-image data. Set
+        # to None to use no caching - in this case, every batch sample is retrieved via file i/o.
+        # You should almost never set this to None, even for large image datasets.
+        self.train.hdf5_cache_mode = "low_dim"
+
+        # whether to load "next_obs" group from hdf5 - only needed for batch / offline RL algorithms
+        self.train.hdf5_load_next_obs = False
+
+        # if provided, use the list of demo keys under the hdf5 group "mask/@hdf5_validation_filter_key" for validation.
+        # Must be provided if @experiment.validate is True.
+        self.train.hdf5_validation_filter_key = None
+
+        # length of experience sequence to fetch from the dataset
+        # and whether to pad the beginning / end of the sequence at boundaries of trajectory in dataset
+        self.train.seq_length = 15
+        self.train.frame_stack = 2
+
+        # keys from hdf5 to load into each batch, besides "obs" and "next_obs". If algorithms
+        # require additional keys from each trajectory in the hdf5, they should be specified here.
+        self.train.dataset_keys = (
+            "actions", 
+        )
+
+        ## learning config ##
+        self.train.batch_size = 256     # batch size
