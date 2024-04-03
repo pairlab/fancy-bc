@@ -7,6 +7,7 @@ from robomimic.algo.cql import CQL
 from robomimic.algo.iql import IQL
 from robomimic.algo.gl import GL, GL_VAE, ValuePlanner
 from robomimic.algo.hbc import HBC
+from robomimic.algo.idql import IDQLUNet
 from robomimic.algo.iris import IRIS
 from robomimic.algo.td3_bc import TD3_BC
 from robomimic.algo.diffusion_policy import DiffusionPolicyUNet

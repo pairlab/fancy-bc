@@ -33,29 +33,42 @@
             "rate": 50,
             "warmstart": 0,
             "terminate_on_success": true
-        }
+        },
+        "env_meta_update_dict": {}
     },
     "train": {
         "data": null,
-        "output_dir":"../diffusion_policy_trained_models",
+        "output_dir": "../diffusion_policy_trained_models",
         "num_data_workers": 0,
-        "hdf5_cache_mode": "low_dim",
+        "hdf5_cache_mode": "all",
         "hdf5_use_swmr": true,
-        "hdf5_load_next_obs": false,
+        "hdf5_load_next_obs": true,
         "hdf5_normalize_obs": false,
         "hdf5_filter_key": null,
-        "seq_length": 15,
+        "hdf5_validation_filter_key": null,
+        "seq_length": 1,
         "pad_seq_length": true,
-        "frame_stack": 2,
+        "frame_stack": 1,
         "pad_frame_stack": true,
         "dataset_keys": [
+            "actions",
+            "rewards",
+            "dones"
+        ],
+        "action_keys": [
             "actions"
         ],
+        "action_config": {
+            "actions": {
+                "normalization": null
+            }
+        },
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 256,
+        "batch_size": 100,
         "num_epochs": 2000,
-        "seed": 1
+        "seed": 1,
+        "data_format": "robomimic"
     },
     "algo": {
         "optim_params": {
@@ -78,7 +91,11 @@
         "unet": {
             "enabled": true,
             "diffusion_step_embed_dim": 256,
-            "down_dims": [256,512,1024],
+            "down_dims": [
+                256,
+                512,
+                1024
+            ],
             "kernel_size": 5,
             "n_groups": 8
         },
@@ -87,7 +104,7 @@
             "power": 0.75
         },
         "ddpm": {
-            "enabled": false,
+            "enabled": true,
             "num_train_timesteps": 100,
             "num_inference_timesteps": 100,
             "beta_schedule": "squaredcos_cap_v2",
@@ -95,7 +112,7 @@
             "prediction_type": "epsilon"
         },
         "ddim": {
-            "enabled": true,
+            "enabled": false,
             "num_train_timesteps": 100,
             "num_inference_timesteps": 10,
             "beta_schedule": "squaredcos_cap_v2",
@@ -134,28 +151,9 @@
             },
             "rgb": {
                 "core_class": "VisualCore",
-                "core_kwargs": {
-                    "feature_dimension": 64,
-                    "backbone_class": "ResNet18Conv",
-                    "backbone_kwargs": {
-                        "pretrained": false,
-                        "input_coord_conv": false
-                    },
-                    "pool_class": "SpatialSoftmax",
-                    "pool_kwargs": {
-                        "num_kp": 32,
-                        "learnable_temperature": false,
-                        "temperature": 1.0,
-                        "noise_std": 0.0
-                    }
-                },
-                "obs_randomizer_class": "CropRandomizer",
-                "obs_randomizer_kwargs": {
-                    "crop_height": 76,
-                    "crop_width": 76,
-                    "num_crops": 1,
-                    "pos_enc": false
-                }
+                "core_kwargs": {},
+                "obs_randomizer_class": null,
+                "obs_randomizer_kwargs": {}
             },
             "depth": {
                 "core_class": "VisualCore",
@@ -170,5 +168,10 @@
                 "obs_randomizer_kwargs": {}
             }
         }
+    },
+    "meta": {
+        "hp_base_config_file": null,
+        "hp_keys": [],
+        "hp_values": []
     }
 }

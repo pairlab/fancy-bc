@@ -52,7 +52,6 @@ class IDQLUNet(PolicyAlgo, ValueAlgo):
         """
         Creates networks and places them into @self.nets.
         """
-        super(IDQLUNet, self).__init__()
         # set up different observation groups for @MIMO_MLP
         observation_group_shapes = OrderedDict()
         observation_group_shapes["obs"] = OrderedDict(self.obs_shapes)
@@ -83,17 +82,29 @@ class IDQLUNet(PolicyAlgo, ValueAlgo):
         critic_target = nn.ModuleList()
         for _ in range(self.algo_config.critic.ensemble.n):
             for net_list in (critic, critic_target):
-                obs_encoder = ObsNets.ObservationGroupEncoder(
-                    observation_group_shapes=observation_group_shapes,
-                    encoder_kwargs=encoder_kwargs,
-                )
-                critic = Conditional1DConvCritic(
-                    input_dim=self.ac_dim,
-                    global_cond_dim=obs_dim*self.algo_config.horizon.observation_horizon
-                )
+                # obs_encoder = ObsNets.ObservationGroupEncoder(
+                #     observation_group_shapes=observation_group_shapes,
+                #     encoder_kwargs=encoder_kwargs,
+                # )
+                # critic = Conditional1DConvCritic(
+                #     input_dim=self.ac_dim,
+                #     global_cond_dim=obs_dim*self.algo_config.horizon.observation_horizon,
+                #     down_dims=self.algo_config.critic.down_dims,
+                #     kernel_size=self.algo_config.critic.kernel_size,
+                #     n_groups=self.algo_config.critic.n_groups
+                # )
                 net_list.append(nn.ModuleDict({
-                    'obs_encoder': obs_encoder,
-                    'critic': critic,
+                    'obs_encoder': ObsNets.ObservationGroupEncoder(
+                        observation_group_shapes=observation_group_shapes,
+                        encoder_kwargs=encoder_kwargs,
+                    ),
+                    'critic': Conditional1DConvCritic(
+                        input_dim=self.ac_dim,
+                        global_cond_dim=obs_dim*self.algo_config.horizon.observation_horizon,
+                        down_dims=self.algo_config.critic.down_dims,
+                        kernel_size=self.algo_config.critic.kernel_size,
+                        n_groups=self.algo_config.critic.n_groups
+                    ),
                 }))
 
         value = ValueNets.ValueNetwork(
@@ -428,29 +439,6 @@ class IDQLUNet(PolicyAlgo, ValueAlgo):
             self.ema.averaged_model.load_state_dict(model_dict["ema"])
         
 
-# =================== Vision Encoder Utils =====================
-
-# =================== UNet for Diffusion ==============
-
-# class Conditional1DConvDoubleCritic(nn.Module):
-#     def __init__(self, *args, **kwargs):
-#         super().__init__()
-#         self.q1_model = Conditional1DConvCritic(*args, **kwargs)
-#         self.q2_model = Conditional1DConvCritic(*args, **kwargs)
-
-#     def forward(self, *args, **kwargs):
-#         return self.q1_model(*args, **kwargs), self.q2_model(*args, **kwargs)
-    
-#     def q1(self, *args, **kwargs):
-#         return self.q1_model(*args, **kwargs)
-
-#     def q2(self, *args, **kwargs):
-#         return self.q1_model(*args, **kwargs)
-
-#     def q_min(self, *args, **kwargs):
-        q1, q2 = self.forward(*args, **kwargs)
-        return torch.min(q1, q2)
-
 class Conditional1DConvCritic(nn.Module):
     def __init__(self, 
         input_dim,
@@ -458,8 +446,7 @@ class Conditional1DConvCritic(nn.Module):
         down_dims=[256,512,1024],
         mlp_hidden_dim=256,
         kernel_size=5,
-        n_groups=8,
-        cond_predict_scale=False
+        n_groups=8
         ):
         super().__init__()
         all_dims = [input_dim] + list(down_dims)
@@ -474,12 +461,10 @@ class Conditional1DConvCritic(nn.Module):
             down_modules.append(nn.ModuleList([
                 ConditionalResidualBlock1D(
                     dim_in, dim_out, cond_dim=cond_dim, 
-                    kernel_size=kernel_size, n_groups=n_groups,
-                    cond_predict_scale=cond_predict_scale),
+                    kernel_size=kernel_size, n_groups=n_groups),
                 ConditionalResidualBlock1D(
                     dim_out, dim_out, cond_dim=cond_dim, 
-                    kernel_size=kernel_size, n_groups=n_groups,
-                    cond_predict_scale=cond_predict_scale),
+                    kernel_size=kernel_size, n_groups=n_groups),
                 Downsample1d(dim_out) if not is_last else nn.Identity()
             ]))
 
@@ -492,7 +477,8 @@ class Conditional1DConvCritic(nn.Module):
 
         self.down_modules = down_modules
 
-        print("number of parameters: %e", sum(p.numel() for p in self.parameters()))
+        print("number of parameters: {:e}".format(
+            sum(p.numel() for p in self.parameters())))
 
     def forward(self, 
             actions: torch.Tensor, 

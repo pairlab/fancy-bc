@@ -540,6 +540,7 @@ class ConditionalResidualBlock1D(nn.Module):
             out : [ batch_size x out_channels x horizon ]
         '''
         out = self.blocks[0](x)
+        breakpoint()
         embed = self.cond_encoder(cond)
 
         embed = embed.reshape(
@@ -584,6 +585,7 @@ class ConditionalUnet1D(nn.Module):
             nn.Mish(),
             nn.Linear(dsed * 4, dsed),
         )
+        breakpoint()
         cond_dim = dsed + global_cond_dim
 
         in_out = list(zip(all_dims[:-1], all_dims[1:]))
