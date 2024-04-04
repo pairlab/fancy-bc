@@ -3,6 +3,7 @@ Config for Diffusion Policy algorithm.
 """
 
 from robomimic.config.base_config import BaseConfig
+from robomimic.config.config import Config
 
 class DiffusionPolicyConfig(BaseConfig):
     ALGO_NAME = "diffusion_policy"
@@ -85,3 +86,36 @@ class DiffusionPolicyConfig(BaseConfig):
 
         ## learning config ##
         self.train.batch_size = 256     # batch size
+    
+    def observation_config(self):
+        super().observation_config()
+        """
+        This function populates the `config.observation` attribute of the config, and is given 
+        to the `Algo` subclass (see `algo/algo.py`) for each algorithm through the `obs_config` 
+        argument to the constructor. This portion of the config is used to specify what 
+        observation modalities should be used by the networks for training, and how the 
+        observation modalities should be encoded by the networks. While this class has a 
+        default implementation that usually doesn't need to be overriden, certain algorithm 
+        configs may choose to, in order to have seperate configs for different networks 
+        in the algorithm. 
+        """
+
+        # =============== RGB default encoder (ResNet backbone + linear layer output) ===============
+        self.observation.encoder.rgb.core_kwargs.feature_dimension = 64
+        self.observation.encoder.rgb.core_kwargs.backbone_class = "ResNet18Conv"
+        self.observation.encoder.rgb.core_kwargs.backbone_kwargs = Config()
+        self.observation.encoder.rgb.core_kwargs.backbone_kwargs.pretrained = False
+        self.observation.encoder.rgb.core_kwargs.backbone_kwargs.input_coord_conv = False
+        self.observation.encoder.rgb.core_kwargs.pool_class = "SpatialSoftmax"
+        self.observation.encoder.rgb.core_kwargs.pool_kwargs = Config()
+        self.observation.encoder.rgb.core_kwargs.pool_kwargs.num_kp = 32
+        self.observation.encoder.rgb.core_kwargs.pool_kwargs.learnable_temperature = False
+        self.observation.encoder.rgb.core_kwargs.pool_kwargs.temperature = 1.0
+        self.observation.encoder.rgb.core_kwargs.pool_kwargs.noise_std = 0.0
+
+        # RGB: Obs Randomizer settings
+        self.observation.encoder.rgb.obs_randomizer_class = "CropRandomizer"                # Can set to 'CropRandomizer' to use crop randomization
+        self.observation.encoder.rgb.obs_randomizer_kwargs.crop_height = 76
+        self.observation.encoder.rgb.obs_randomizer_kwargs.crop_width = 76
+        self.observation.encoder.rgb.obs_randomizer_kwargs.num_crops = 1
+        self.observation.encoder.rgb.obs_randomizer_kwargs.pos_enc = False

@@ -33,7 +33,8 @@
             "rate": 1,
             "warmstart": 0,
             "terminate_on_success": true
-        }
+        },
+        "env_meta_update_dict": {}
     },
     "train": {
         "data": null,
@@ -49,16 +50,26 @@
         "pad_seq_length": true,
         "frame_stack": 1,
         "pad_frame_stack": true,
+        "get_pad_mask": false,
         "dataset_keys": [
             "actions",
             "rewards",
             "dones"
         ],
+        "action_keys": [
+            "actions"
+        ],
+        "action_config": {
+            "actions": {
+                "normalization": null
+            }
+        },
         "goal_mode": null,
         "cuda": true,
         "batch_size": 256,
         "num_epochs": 200,
-        "seed": 1
+        "seed": 1,
+        "data_format": "robomimic"
     },
     "algo": {
         "optim_params": {
