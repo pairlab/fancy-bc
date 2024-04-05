@@ -150,6 +150,9 @@ class BaseConfig(Config):
         # num workers for loading data - generally set to 0 for low-dim datasets, and 2 for image datasets
         self.train.num_data_workers = 0  
 
+        # whether to use pin memory for data loading - depending on the setting this can give a speedup
+        self.train.pin_memory = False
+
         # One of ["all", "low_dim", or None]. Set to "all" to cache entire hdf5 in memory - this is 
         # by far the fastest for data loading. Set to "low_dim" to cache all non-image data. Set
         # to None to use no caching - in this case, every batch sample is retrieved via file i/o.

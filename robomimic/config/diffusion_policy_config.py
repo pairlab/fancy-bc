@@ -37,6 +37,9 @@ class DiffusionPolicyConfig(BaseConfig):
         # EMA parameters
         self.algo.ema.enabled = True
         self.algo.ema.power = 0.75
+
+        # AMP parameters
+        self.algo.amp.enabled = False
         
         # Noise Scheduler
         ## DDPM

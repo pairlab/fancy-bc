@@ -108,11 +108,15 @@ class DiffusionPolicyUNet(PolicyAlgo):
         ema = None
         if self.algo_config.ema.enabled:
             ema = EMAModel(model=nets, power=self.algo_config.ema.power)
+        
+        # setup EMA
+        scaler = torch.cuda.amp.GradScaler(enabled=self.algo_config.amp.enabled)
                 
         # set attrs
         self.nets = nets
         self.noise_scheduler = noise_scheduler
         self.ema = ema
+        self.scaler = scaler
         self.action_check_done = False
         self.obs_queue = None
         self.action_queue = None
@@ -186,32 +190,34 @@ class DiffusionPolicyUNet(PolicyAlgo):
             for k in self.obs_shapes:
                 # first two dimensions should be [B, T] for inputs
                 assert inputs['obs'][k].ndim - 2 == len(self.obs_shapes[k])
-            
-            obs_features = TensorUtils.time_distributed(inputs, self.nets['policy']['obs_encoder'], inputs_as_kwargs=True)
-            assert obs_features.ndim == 3  # [B, T, D]
 
-            obs_cond = obs_features.flatten(start_dim=1)
+            with torch.autocast(device_type='cuda', dtype=torch.float16, enabled=self.algo_config.amp.enabled):
             
-            # sample noise to add to actions
-            noise = torch.randn(actions.shape, device=self.device)
-            
-            # sample a diffusion iteration for each data point
-            timesteps = torch.randint(
-                0, self.noise_scheduler.config.num_train_timesteps, 
-                (B,), device=self.device
-            ).long()
-            
-            # add noise to the clean actions according to the noise magnitude at each diffusion iteration
-            # (this is the forward diffusion process)
-            noisy_actions = self.noise_scheduler.add_noise(
-                actions, noise, timesteps)
-            
-            # predict the noise residual
-            noise_pred = self.nets['policy']['noise_pred_net'](
-                noisy_actions, timesteps, global_cond=obs_cond)
-            
-            # L2 loss
-            loss = F.mse_loss(noise_pred, noise)
+                obs_features = TensorUtils.time_distributed(inputs, self.nets['policy']['obs_encoder'], inputs_as_kwargs=True)
+                assert obs_features.ndim == 3  # [B, T, D]
+
+                obs_cond = obs_features.flatten(start_dim=1)
+                
+                # sample noise to add to actions
+                noise = torch.randn(actions.shape, device=self.device)
+                
+                # sample a diffusion iteration for each data point
+                timesteps = torch.randint(
+                    0, self.noise_scheduler.config.num_train_timesteps, 
+                    (B,), device=self.device
+                ).long()
+                
+                # add noise to the clean actions according to the noise magnitude at each diffusion iteration
+                # (this is the forward diffusion process)
+                noisy_actions = self.noise_scheduler.add_noise(
+                    actions, noise, timesteps)
+                
+                # predict the noise residual
+                noise_pred = self.nets['policy']['noise_pred_net'](
+                    noisy_actions, timesteps, global_cond=obs_cond)
+                
+                # L2 loss
+                loss = F.mse_loss(noise_pred, noise)
             
             # logging
             losses = {
@@ -225,6 +231,7 @@ class DiffusionPolicyUNet(PolicyAlgo):
                     net=self.nets,
                     optim=self.optimizers["policy"],
                     loss=loss,
+                    scaler=self.scaler,
                 )
                 
                 # update Exponential Moving Average of the model weights
@@ -380,6 +387,7 @@ class DiffusionPolicyUNet(PolicyAlgo):
         return {
             "nets": self.nets.state_dict(),
             "ema": self.ema.averaged_model.state_dict() if self.ema is not None else None,
+            'scaler': self.scaler.state_dict()
         }
 
     def deserialize(self, model_dict):
@@ -393,6 +401,7 @@ class DiffusionPolicyUNet(PolicyAlgo):
         self.nets.load_state_dict(model_dict["nets"])
         if model_dict.get("ema", None) is not None:
             self.ema.averaged_model.load_state_dict(model_dict["ema"])
+        self.scaler.load_state_dict(model_dict['scaler'])
         
 
 # =================== Vision Encoder Utils =====================

@@ -163,7 +163,7 @@ def lr_scheduler_from_optim_params(net_optim_params, net, optimizer):
     return lr_scheduler
 
 
-def backprop_for_loss(net, optim, loss, max_grad_norm=None, retain_graph=False):
+def backprop_for_loss(net, optim, loss, max_grad_norm=None, retain_graph=False, scaler=None):
     """
     Backpropagate loss and update parameters for network with
     name @name.
@@ -185,7 +185,11 @@ def backprop_for_loss(net, optim, loss, max_grad_norm=None, retain_graph=False):
 
     # backprop
     optim.zero_grad()
-    loss.backward(retain_graph=retain_graph)
+    if scaler is not None:
+        scaler.scale(loss).backward(retain_graph=retain_graph)
+        scaler.unscale_(optim)
+    else:
+        loss.backward(retain_graph=retain_graph)
 
     # gradient clipping
     if max_grad_norm is not None:
@@ -199,7 +203,11 @@ def backprop_for_loss(net, optim, loss, max_grad_norm=None, retain_graph=False):
             grad_norms += p.grad.data.norm(2).pow(2).item()
 
     # step
-    optim.step()
+    if scaler is not None:
+        scaler.step(optim)
+        scaler.update()
+    else:
+        optim.step()
 
     return grad_norms
 

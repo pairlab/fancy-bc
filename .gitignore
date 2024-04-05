@@ -129,3 +129,6 @@ commands.sh
 diffusion_policy_trained_models
 slurm
 slurm_out
+idql_trained_models
+iql_trained_models
+robomimic/exps/custom
