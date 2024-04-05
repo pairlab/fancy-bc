@@ -363,7 +363,7 @@ def train(config, device, auto_remove_exp=False):
                 'best_valid_loss': best_valid_loss,
                 'best_return': best_return,
                 'best_success_rate': best_success_rate,
-                'epoch': epoch,
+                'epoch': epoch + 1,
             }
             TrainUtils.save_model(
                 model=model,
@@ -381,7 +381,7 @@ def train(config, device, auto_remove_exp=False):
                 'best_valid_loss': best_valid_loss,
                 'best_return': best_return,
                 'best_success_rate': best_success_rate,
-                'epoch': epoch,
+                'epoch': epoch + 1,
                 'wandb_id': data_logger.wandb_id
             }
             TrainUtils.save_model(

@@ -87,7 +87,7 @@ class DataLogger(object):
                         entity=Macros.WANDB_ENTITY,
                         project=config.experiment.logging.wandb_proj_name,
                         name=config.experiment.name,
-                        group=config.experiment.logging.wandb.wandb_group,
+                        group=config.experiment.logging.wandb_group,
                         dir=log_dir,
                         mode=("offline" if attempt == num_attempts - 1 else "online"),
                         config=config,
