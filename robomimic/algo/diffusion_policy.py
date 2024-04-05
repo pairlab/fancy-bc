@@ -384,11 +384,13 @@ class DiffusionPolicyUNet(PolicyAlgo):
         """
         Get dictionary of current model parameters.
         """
-        return {
-            "nets": self.nets.state_dict(),
+        model_dict = super().serialize()
+        extras = {
             "ema": self.ema.averaged_model.state_dict() if self.ema is not None else None,
             'scaler': self.scaler.state_dict()
         }
+        model_dict.update(extras)
+        return model_dict
 
     def deserialize(self, model_dict):
         """
@@ -398,7 +400,7 @@ class DiffusionPolicyUNet(PolicyAlgo):
             model_dict (dict): a dictionary saved by self.serialize() that contains
                 the same keys as @self.network_classes
         """
-        self.nets.load_state_dict(model_dict["nets"])
+        super().deserialize(model_dict)
         if model_dict.get("ema", None) is not None:
             self.ema.averaged_model.load_state_dict(model_dict["ema"])
         self.scaler.load_state_dict(model_dict['scaler'])

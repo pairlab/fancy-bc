@@ -1,14 +1,16 @@
 {
     "algo_name": "gl",
     "experiment": {
-        "name": "test",
+        "name": null,
         "validate": false,
         "logging": {
             "terminal_output_to_txt": true,
             "log_tb": true,
             "log_wandb": false,
-            "wandb_proj_name": "debug"
+            "wandb_proj_name": "debug",
+            "wandb_group": null
         },
+        "auto_resume": false,
         "save": {
             "enabled": true,
             "every_n_seconds": null,
@@ -16,7 +18,8 @@
             "epochs": [],
             "on_best_validation": false,
             "on_best_rollout_return": false,
-            "on_best_rollout_success_rate": true
+            "on_best_rollout_success_rate": true,
+            "save_last_checkpoint": true
         },
         "epoch_every_n_steps": 100,
         "validation_epoch_every_n_steps": 10,
@@ -40,6 +43,7 @@
         "data": null,
         "output_dir": "../gl_trained_models",
         "num_data_workers": 0,
+        "pin_memory": false,
         "hdf5_cache_mode": "all",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": true,

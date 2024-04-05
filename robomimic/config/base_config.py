@@ -80,13 +80,15 @@ class BaseConfig(Config):
         videos, and whether to do rollouts (and how often). This class has a default 
         implementation that usually doesn't need to be overriden.
         """
-
-        self.experiment.name = "test"                               # name of experiment used to make log files
+ 
+        self.experiment.name = None                                 # name of experiment used to make log files
         self.experiment.validate = False                            # whether to do validation or not
         self.experiment.logging.terminal_output_to_txt = True       # whether to log stdout to txt file 
         self.experiment.logging.log_tb = True                       # enable tensorboard logging
         self.experiment.logging.log_wandb = False                   # enable wandb logging
         self.experiment.logging.wandb_proj_name = "debug"           # project name if using wandb
+        self.experiment.logging.wandb_group = None
+        self.experiment.auto_resume = False                         # whether to automatically load and resume experiment
 
 
         ## save config - if and when to save model checkpoints ##
@@ -97,6 +99,7 @@ class BaseConfig(Config):
         self.experiment.save.on_best_validation = False             # save models that achieve best validation score
         self.experiment.save.on_best_rollout_return = False         # save models that achieve best rollout return
         self.experiment.save.on_best_rollout_success_rate = True    # save models that achieve best success rate
+        self.experiment.save.save_last_checkpoint = True            # save  and overwrite a checkpoint every epoch
 
         # epoch definitions - if not None, set an epoch to be this many gradient steps, else the full dataset size will be used
         self.experiment.epoch_every_n_steps = 100                   # number of gradient steps in train epoch (None for full dataset pass)

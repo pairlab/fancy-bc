@@ -31,7 +31,7 @@ from robomimic.envs.wrappers import EnvWrapper
 from robomimic.algo import RolloutPolicy
 
 
-def get_exp_dir(config, auto_remove_exp_dir=False):
+def get_exp_dir(config, env_meta, auto_remove_exp_dir=False):
     """
     Create experiment directory from config. If an identical experiment directory
     exists and @auto_remove_exp_dir is False (default), the function will prompt 
@@ -50,42 +50,38 @@ def get_exp_dir(config, auto_remove_exp_dir=False):
             to store rollout videos
     """
     assert not (Macros.USE_MAGLEV and Macros.USE_NGC)
-    if Macros.USE_MAGLEV or Macros.USE_NGC:
-        # remove existing experiment directory automatically if path exists so that we don't block on user input
-        auto_remove_exp_dir = True
 
     # timestamp for directory names
     t_now = time.time()
-    time_str = datetime.datetime.fromtimestamp(t_now).strftime('%Y%m%d%H%M%S')
+    time_str = datetime.datetime.fromtimestamp(t_now).strftime('%Y-%m-%d/%H-%M-%S')
 
     # create directory for where to dump model parameters, tensorboard logs, and videos
     base_output_dir = os.path.expandvars(os.path.expanduser(config.train.output_dir))
+    base_output_dir = os.path.join(base_output_dir, env_meta['env_name'])
     if not os.path.isabs(base_output_dir):
         # relative paths are specified relative to robomimic module location
         base_output_dir = os.path.join(robomimic.__path__[0], base_output_dir)
-    base_output_dir = os.path.join(base_output_dir, config.experiment.name)
+    if config.experiment.name is not None:
+        base_output_dir = os.path.join(base_output_dir, config.experiment.name)
+    else:
+        base_output_dir = os.path.join(base_output_dir, time_str)
     if os.path.exists(base_output_dir):
-        if not auto_remove_exp_dir:
-            ans = input("WARNING: model directory ({}) already exists! \noverwrite? (y/n)\n".format(base_output_dir))
-        else:
-            ans = "y"
-        if ans == "y":
-            print("REMOVING")
-            shutil.rmtree(base_output_dir)
+        if not config.experiment.auto_resume:
+            assert 0, 'Model directory occupied, aborting'
 
     # only make model directory if model saving is enabled
     output_dir = None
     if config.experiment.save.enabled:
-        output_dir = os.path.join(base_output_dir, time_str, "models")
-        os.makedirs(output_dir)
+        output_dir = os.path.join(base_output_dir, "models")
+        os.makedirs(output_dir, exist_ok=True)
 
     # tensorboard directory
-    log_dir = os.path.join(base_output_dir, time_str, "logs")
-    os.makedirs(log_dir)
+    log_dir = os.path.join(base_output_dir, "logs")
+    os.makedirs(log_dir, exist_ok=True)
 
     # video directory
-    video_dir = os.path.join(base_output_dir, time_str, "videos")
-    os.makedirs(video_dir)
+    video_dir = os.path.join(base_output_dir, "videos")
+    os.makedirs(video_dir, exist_ok=True)
 
     # establish sync path for syncing important training results back
     set_absolute_sync_path(
@@ -94,7 +90,7 @@ def get_exp_dir(config, auto_remove_exp_dir=False):
         time_str=time_str,
     )
 
-    return log_dir, output_dir, video_dir
+    return base_output_dir, log_dir, output_dir, video_dir
 
 
 def set_absolute_sync_path(output_dir, exp_name, time_str=None):
@@ -580,7 +576,7 @@ def should_save_from_rollout_logs(
     )
 
 
-def save_model(model, config, env_meta, shape_meta, ckpt_path, obs_normalization_stats=None, action_normalization_stats=None):
+def save_model(model, config, env_meta, shape_meta, train_meta, ckpt_path, obs_normalization_stats=None, action_normalization_stats=None):
     """
     Save model to a torch pth file.
 
@@ -604,12 +600,14 @@ def save_model(model, config, env_meta, shape_meta, ckpt_path, obs_normalization
     """
     env_meta = deepcopy(env_meta)
     shape_meta = deepcopy(shape_meta)
+    train_meta = deepcopy(train_meta)
     params = dict(
         model=model.serialize(),
         config=config.dump(),
         algo_name=config.algo_name,
         env_metadata=env_meta,
         shape_metadata=shape_meta,
+        train_meta=train_meta,
     )
     if obs_normalization_stats is not None:
         assert config.train.hdf5_normalize_obs
@@ -620,6 +618,28 @@ def save_model(model, config, env_meta, shape_meta, ckpt_path, obs_normalization
         params["action_normalization_stats"] = TensorUtils.to_list(action_normalization_stats)
     torch.save(params, ckpt_path)
     print("save checkpoint to {}".format(ckpt_path))
+
+
+def load_model(ckpt_path):
+    """
+    Save model to a torch pth file.
+
+    Args:
+        model (Algo instance): model to load
+
+        ckpt_path (str): path from which to load checkpoint
+    """
+    params = torch.load(ckpt_path)
+    model_state_dict = params['model']
+    config = params['config']
+    algo_name = params['algo_name']
+    env_metadata = params['env_metadata']
+    shape_metadata = params['shape_metadata']
+    train_meta = params['train_meta']
+
+    # model.deserialize(model_state_dict)
+
+    return model_state_dict, config, algo_name, env_metadata, shape_metadata, train_meta
 
 
 def run_epoch(model, data_loader, epoch, validate=False, num_steps=None, obs_normalization_stats=None):

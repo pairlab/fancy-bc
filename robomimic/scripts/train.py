@@ -58,20 +58,6 @@ def train(config, device, auto_remove_exp=False):
     # set num workers
     torch.set_num_threads(1)
 
-    print("\n============= New Training Run with Config =============")
-    print(config)
-    print("")
-    log_dir, ckpt_dir, video_dir = TrainUtils.get_exp_dir(config, auto_remove_exp_dir=auto_remove_exp)
-
-    if config.experiment.logging.terminal_output_to_txt:
-        # log stdout and stderr to a text file
-        logger = PrintLogger(os.path.join(log_dir, 'log.txt'))
-        sys.stdout = logger
-        sys.stderr = logger
-
-    # read config to set up metadata for observation modalities (e.g. detecting rgb observations)
-    ObsUtils.initialize_obs_utils_with_config(config)
-
     # make sure the dataset exists
     eval_dataset_cfg = config.train.data[0]
     dataset_path = os.path.expandvars(os.path.expanduser(eval_dataset_cfg["path"]))
@@ -82,6 +68,25 @@ def train(config, device, auto_remove_exp=False):
     # load basic metadata from training file
     print("\n============= Loaded Environment Metadata =============")
     env_meta = FileUtils.get_env_metadata_from_dataset(dataset_path=dataset_path, ds_format=ds_format)
+
+    print("\n============= New Training Run with Config =============")
+    print(config)
+    print("")
+    base_dir, log_dir, ckpt_dir, video_dir = TrainUtils.get_exp_dir(config, env_meta, auto_remove_exp_dir=auto_remove_exp)
+
+    if config.experiment.auto_resume and os.path.exists(os.path.join(ckpt_dir, 'last_ckpt.pth')):
+        model_state_dict, _, _, _, _, ckpt_train_meta = TrainUtils.load_model(os.path.join(ckpt_dir, 'last_ckpt.pth'))
+    else:
+        model_state_dict, ckpt_train_meta = None, None
+
+    if config.experiment.logging.terminal_output_to_txt:
+        # log stdout and stderr to a text file
+        logger = PrintLogger(os.path.join(log_dir, 'log.txt'))
+        sys.stdout = logger
+        sys.stderr = logger
+
+    # read config to set up metadata for observation modalities (e.g. detecting rgb observations)
+    ObsUtils.initialize_obs_utils_with_config(config)
 
     # update env meta if applicable
     from robomimic.utils.script_utils import deep_update
@@ -130,6 +135,7 @@ def train(config, device, auto_remove_exp=False):
         config,
         log_tb=config.experiment.logging.log_tb,
         log_wandb=config.experiment.logging.log_wandb,
+        wandb_id=ckpt_train_meta.get('wandb_id', None) if ckpt_train_meta is not None else None
     )
     model = algo_factory(
         algo_name=config.algo_name,
@@ -138,9 +144,12 @@ def train(config, device, auto_remove_exp=False):
         ac_dim=shape_meta["ac_dim"],
         device=device,
     )
+    if model_state_dict is not None:
+        model.deserialize(model_state_dict)
+        del model_state_dict
     
     # save the config as a json file
-    with open(os.path.join(log_dir, '..', 'config.json'), 'w') as outfile:
+    with open(os.path.join(base_dir, 'config.json'), 'w') as outfile:
         json.dump(config, outfile, indent=4)
 
     print("\n============= Model Summary =============")
@@ -159,7 +168,7 @@ def train(config, device, auto_remove_exp=False):
         print(validset)
         print("")
 
-    # maybe retreve statistics for normalizing observations
+    # maybe retrieve statistics for normalizing observations
     obs_normalization_stats = None
     if config.train.hdf5_normalize_obs:
         obs_normalization_stats = trainset.get_obs_normalization_stats()
@@ -204,7 +213,14 @@ def train(config, device, auto_remove_exp=False):
     best_valid_loss = None
     best_return = {k: -np.inf for k in envs} if config.experiment.rollout.enabled else None
     best_success_rate = {k: -1. for k in envs} if config.experiment.rollout.enabled else None
+    start_epoch = 1
     last_ckpt_time = time.time()
+
+    if ckpt_train_meta is not None:
+        best_valid_loss = ckpt_train_meta['best_valid_loss']
+        best_return = ckpt_train_meta['best_return']
+        best_success_rate = ckpt_train_meta['best_success_rate']
+        start_epoch = ckpt_train_meta['epoch']
 
     need_sync_results = (Macros.RESULTS_SYNC_PATH_ABS is not None)
     if need_sync_results:
@@ -219,7 +235,7 @@ def train(config, device, auto_remove_exp=False):
     train_num_steps = config.experiment.epoch_every_n_steps
     valid_num_steps = config.experiment.validation_epoch_every_n_steps
 
-    for epoch in range(1, config.train.num_epochs + 1): # epoch numbers start at 1
+    for epoch in range(start_epoch, config.train.num_epochs + 1): # epoch numbers start at 1
         step_log = TrainUtils.run_epoch(
             model=model,
             data_loader=train_loader,
@@ -343,12 +359,38 @@ def train(config, device, auto_remove_exp=False):
 
         # Save model checkpoints based on conditions (success rate, validation loss, etc)
         if should_save_ckpt:
+            train_meta={
+                'best_valid_loss': best_valid_loss,
+                'best_return': best_return,
+                'best_success_rate': best_success_rate,
+                'epoch': epoch,
+            }
             TrainUtils.save_model(
                 model=model,
                 config=config,
                 env_meta=env_meta,
                 shape_meta=shape_meta,
+                train_meta=train_meta,
                 ckpt_path=os.path.join(ckpt_dir, epoch_ckpt_name + ".pth"),
+                obs_normalization_stats=obs_normalization_stats,
+                action_normalization_stats=action_normalization_stats,
+            )
+        
+        if config.experiment.save.save_last_checkpoint:
+            train_meta={
+                'best_valid_loss': best_valid_loss,
+                'best_return': best_return,
+                'best_success_rate': best_success_rate,
+                'epoch': epoch,
+                'wandb_id': data_logger.wandb_id
+            }
+            TrainUtils.save_model(
+                model=model,
+                config=config,
+                env_meta=env_meta,
+                shape_meta=shape_meta,
+                train_meta=train_meta,
+                ckpt_path=os.path.join(ckpt_dir, 'last_ckpt.pth'),
                 obs_normalization_stats=obs_normalization_stats,
                 action_normalization_stats=action_normalization_stats,
             )

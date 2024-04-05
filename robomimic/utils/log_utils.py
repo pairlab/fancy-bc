@@ -46,7 +46,7 @@ class DataLogger(object):
     """
     Logging class to log metrics to tensorboard and/or retrieve running statistics about logged data.
     """
-    def __init__(self, log_dir, config, log_tb=True, log_wandb=False):
+    def __init__(self, log_dir, config, log_tb=True, log_wandb=False, wandb_id=None):
         """
         Args:
             log_dir (str): base path to store logs
@@ -54,6 +54,7 @@ class DataLogger(object):
         """
         self._tb_logger = None
         self._wandb_logger = None
+        self.wandb_id = None
         self._data = dict() # store all the scalar data logged so far
 
         if log_tb:
@@ -78,23 +79,21 @@ class DataLogger(object):
                 try:
                     # set up wandb
                     self._wandb_logger = wandb
+                    self.wandb_id = wandb_id
+                    if self.wandb_id is None:
+                        self.wandb_id = wandb.util.generate_id()
 
                     self._wandb_logger.init(
                         entity=Macros.WANDB_ENTITY,
                         project=config.experiment.logging.wandb_proj_name,
                         name=config.experiment.name,
+                        group=config.experiment.logging.wandb.wandb_group,
                         dir=log_dir,
                         mode=("offline" if attempt == num_attempts - 1 else "online"),
-                        config=config
+                        config=config,
+                        resume='allow',
+                        id=self.wandb_id,
                     )
-
-                    # set up info for identifying experiment
-                    # wandb_config = {k: v for (k, v) in config.meta.items() if k not in ["hp_keys", "hp_values"]}
-                    # for (k, v) in zip(config.meta["hp_keys"], config.meta["hp_values"]):
-                    #     wandb_config[k] = v
-                    # if "algo" not in wandb_config:
-                    #     wandb_config["algo"] = config.algo_name
-                    # self._wandb_logger.config.update(wandb_config)
 
                     break
                 except Exception as e:

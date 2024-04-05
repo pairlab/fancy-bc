@@ -300,7 +300,22 @@ class Algo(object):
         """
         Get dictionary of current model parameters.
         """
-        return self.nets.state_dict()
+        optimizer_dict, lr_scheduler_dict = {}, {}
+        for name in self.nets:
+            if isinstance(self.nets[name], nn.ModuleList):
+                optimizer_dict[name] = [optimizer.state_dict() for  optimizer in self.optimizers[name]]
+                lr_scheduler_dict[name] = [scheduler.state_dict() if scheduler is not None else {} for  scheduler in self.lr_schedulers[name]]
+            else:
+                optimizer_dict[name] = self.optimizers[name].state_dict()
+                lr_scheduler_dict[name] = self.lr_schedulers[name].state_dict() if self.lr_schedulers[name] is not None else {}
+
+        state_dict = {
+            'nets': self.nets.state_dict(),
+            'optimizers': optimizer_dict,
+            'lr_schedulers': lr_scheduler_dict
+
+        }
+        return state_dict
 
     def deserialize(self, model_dict):
         """
@@ -310,7 +325,17 @@ class Algo(object):
             model_dict (dict): a dictionary saved by self.serialize() that contains
                 the same keys as @self.network_classes
         """
-        self.nets.load_state_dict(model_dict)
+        self.nets.load_state_dict(model_dict['nets'])
+        for name in self.nets:
+            if isinstance(self.nets[name], nn.ModuleList):
+                [self.optimizers[i].load_state_dict(model_dict['optimizers'][name][i]) for i in range(len(self.optimizers[name]))]
+                if self.lr_schedulers[name][0] is not None:
+                    [self.lr_schedulers[i].load_state_dict(model_dict['lr_schedulers'][name][i]) for i in range(len(self.lr_schedulers[name]))]
+            else:
+                self.optimizers[name].load_state_dict(model_dict['optimizers'][name])
+                if self.lr_schedulers[name] is not None:
+                    self.lr_schedulers[name].load_state_dict(model_dict['lr_schedulers'][name])
+
 
     def __repr__(self):
         """
