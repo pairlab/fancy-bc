@@ -133,6 +133,7 @@ def train(config, device, auto_remove_exp=False):
     data_logger = DataLogger(
         log_dir,
         config,
+        env_meta,
         log_tb=config.experiment.logging.log_tb,
         log_wandb=config.experiment.logging.log_wandb,
         wandb_id=ckpt_train_meta.get('wandb_id', None) if ckpt_train_meta is not None else None
@@ -358,23 +359,25 @@ def train(config, device, auto_remove_exp=False):
                 os.remove(video_paths[env_name])
 
         # Save model checkpoints based on conditions (success rate, validation loss, etc)
-        if should_save_ckpt:
-            train_meta={
-                'best_valid_loss': best_valid_loss,
-                'best_return': best_return,
-                'best_success_rate': best_success_rate,
-                'epoch': epoch + 1,
-            }
-            TrainUtils.save_model(
-                model=model,
-                config=config,
-                env_meta=env_meta,
-                shape_meta=shape_meta,
-                train_meta=train_meta,
-                ckpt_path=os.path.join(ckpt_dir, epoch_ckpt_name + ".pth"),
-                obs_normalization_stats=obs_normalization_stats,
-                action_normalization_stats=action_normalization_stats,
-            )
+        # TODO: right now this uses too uch storage so I'm getting rid of it. Need to find a better way to handle this
+                
+        # if should_save_ckpt:
+        #     train_meta={
+        #         'best_valid_loss': best_valid_loss,
+        #         'best_return': best_return,
+        #         'best_success_rate': best_success_rate,
+        #         'epoch': epoch + 1,
+        #     }
+        #     TrainUtils.save_model(
+        #         model=model,
+        #         config=config,
+        #         env_meta=env_meta,
+        #         shape_meta=shape_meta,
+        #         train_meta=train_meta,
+        #         ckpt_path=os.path.join(ckpt_dir, epoch_ckpt_name + ".pth"),
+        #         obs_normalization_stats=obs_normalization_stats,
+        #         action_normalization_stats=action_normalization_stats,
+        #     )
         
         if config.experiment.save.save_last_checkpoint:
             train_meta={

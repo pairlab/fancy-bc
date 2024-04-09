@@ -63,6 +63,8 @@ def get_exp_dir(config, env_meta, auto_remove_exp_dir=False):
         base_output_dir = os.path.join(robomimic.__path__[0], base_output_dir)
     if config.experiment.name is not None:
         base_output_dir = os.path.join(base_output_dir, config.experiment.name)
+    if config.experiment.logging.wandb_group is not None:
+        base_output_dir = os.path.join(base_output_dir, config.experiment.logging.wandb_group)
     else:
         base_output_dir = os.path.join(base_output_dir, time_str)
     if os.path.exists(base_output_dir):
