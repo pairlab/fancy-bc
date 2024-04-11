@@ -30,6 +30,7 @@ from collections import OrderedDict
 
 import torch
 from torch.utils.data import DataLoader
+from pyinstrument.profiler import Profiler
 
 import robomimic
 import robomimic.macros as Macros
@@ -73,6 +74,8 @@ def train(config, device, auto_remove_exp=False):
     print(config)
     print("")
     base_dir, log_dir, ckpt_dir, video_dir = TrainUtils.get_exp_dir(config, env_meta, auto_remove_exp_dir=auto_remove_exp)
+
+    # breakpoint()
 
     if config.experiment.auto_resume and os.path.exists(os.path.join(ckpt_dir, 'last_ckpt.pth')):
         model_state_dict, _, _, _, _, ckpt_train_meta = TrainUtils.load_model(os.path.join(ckpt_dir, 'last_ckpt.pth'))
@@ -236,7 +239,13 @@ def train(config, device, auto_remove_exp=False):
     train_num_steps = config.experiment.epoch_every_n_steps
     valid_num_steps = config.experiment.validation_epoch_every_n_steps
 
+    if config.experiment.do_profile:
+        profiler = Profiler()
+
     for epoch in range(start_epoch, config.train.num_epochs + 1): # epoch numbers start at 1
+        if config.experiment.do_profile:
+            profiler.start()
+
         step_log = TrainUtils.run_epoch(
             model=model,
             data_loader=train_loader,
@@ -361,23 +370,23 @@ def train(config, device, auto_remove_exp=False):
         # Save model checkpoints based on conditions (success rate, validation loss, etc)
         # TODO: right now this uses too uch storage so I'm getting rid of it. Need to find a better way to handle this
                 
-        # if should_save_ckpt:
-        #     train_meta={
-        #         'best_valid_loss': best_valid_loss,
-        #         'best_return': best_return,
-        #         'best_success_rate': best_success_rate,
-        #         'epoch': epoch + 1,
-        #     }
-        #     TrainUtils.save_model(
-        #         model=model,
-        #         config=config,
-        #         env_meta=env_meta,
-        #         shape_meta=shape_meta,
-        #         train_meta=train_meta,
-        #         ckpt_path=os.path.join(ckpt_dir, epoch_ckpt_name + ".pth"),
-        #         obs_normalization_stats=obs_normalization_stats,
-        #         action_normalization_stats=action_normalization_stats,
-        #     )
+        if should_save_ckpt:
+            train_meta={
+                'best_valid_loss': best_valid_loss,
+                'best_return': best_return,
+                'best_success_rate': best_success_rate,
+                'epoch': epoch + 1,
+            }
+            TrainUtils.save_model(
+                model=model,
+                config=config,
+                env_meta=env_meta,
+                shape_meta=shape_meta,
+                train_meta=train_meta,
+                ckpt_path=os.path.join(ckpt_dir, epoch_ckpt_name + ".pth"),
+                obs_normalization_stats=obs_normalization_stats,
+                action_normalization_stats=action_normalization_stats,
+            )
         
         if config.experiment.save.save_last_checkpoint:
             train_meta={
@@ -462,6 +471,10 @@ def train(config, device, auto_remove_exp=False):
         mem_usage = int(process.memory_info().rss / 1000000)
         data_logger.record("System/RAM Usage (MB)", mem_usage, epoch)
         print("\nEpoch {} Memory Usage: {} MB\n".format(epoch, mem_usage))
+
+        if config.experiment.do_profile:
+            profiler.stop()
+            profiler.print()
 
     # terminate logging
     data_logger.close()

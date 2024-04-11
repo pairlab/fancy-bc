@@ -84,11 +84,16 @@ class DataLogger(object):
                         self.wandb_id = wandb.util.generate_id()
 
                     config_dict = dict(config)
-                    config_dict['env'] = env_meta
+                    config_dict['env'] = dict(env_meta)
+                    dataset_name = '_'.join(config.train.data[0]['path'].split('/')[-3:-1])
+                    config_dict['env']['dataset_name'] = dataset_name
+
+                    wandb_name = f'{dataset_name}_{config.experiment.name}_{config.experiment.logging.wandb_group}'
+
                     self._wandb_logger.init(
                         entity=Macros.WANDB_ENTITY,
                         project=config.experiment.logging.wandb_proj_name,
-                        name=config.experiment.name,
+                        name=wandb_name,
                         group=config.experiment.logging.wandb_group,
                         dir=log_dir,
                         mode=("offline" if attempt == num_attempts - 1 else "online"),

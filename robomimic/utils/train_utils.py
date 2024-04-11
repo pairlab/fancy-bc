@@ -56,15 +56,16 @@ def get_exp_dir(config, env_meta, auto_remove_exp_dir=False):
     time_str = datetime.datetime.fromtimestamp(t_now).strftime('%Y-%m-%d/%H-%M-%S')
 
     # create directory for where to dump model parameters, tensorboard logs, and videos
+    dataset_name = '_'.join(config.train.data[0]['path'].split('/')[-3:-1])
     base_output_dir = os.path.expandvars(os.path.expanduser(config.train.output_dir))
-    base_output_dir = os.path.join(base_output_dir, env_meta['env_name'])
+    base_output_dir = os.path.join(base_output_dir, env_meta['env_name'], dataset_name)
     if not os.path.isabs(base_output_dir):
         # relative paths are specified relative to robomimic module location
         base_output_dir = os.path.join(robomimic.__path__[0], base_output_dir)
     if config.experiment.name is not None:
         base_output_dir = os.path.join(base_output_dir, config.experiment.name)
-    if config.experiment.logging.wandb_group is not None:
-        base_output_dir = os.path.join(base_output_dir, config.experiment.logging.wandb_group)
+        if config.experiment.logging.wandb_group is not None:
+            base_output_dir = os.path.join(base_output_dir, config.experiment.logging.wandb_group)
     else:
         base_output_dir = os.path.join(base_output_dir, time_str)
     if os.path.exists(base_output_dir):
@@ -72,10 +73,10 @@ def get_exp_dir(config, env_meta, auto_remove_exp_dir=False):
             assert 0, 'Model directory occupied, aborting'
 
     # only make model directory if model saving is enabled
-    output_dir = None
-    if config.experiment.save.enabled:
-        output_dir = os.path.join(base_output_dir, "models")
-        os.makedirs(output_dir, exist_ok=True)
+    # output_dir = None
+    # if config.experiment.save.enabled:
+    output_dir = os.path.join(base_output_dir, "models")
+    os.makedirs(output_dir, exist_ok=True)
 
     # tensorboard directory
     log_dir = os.path.join(base_output_dir, "logs")
@@ -631,7 +632,10 @@ def load_model(ckpt_path):
 
         ckpt_path (str): path from which to load checkpoint
     """
-    params = torch.load(ckpt_path)
+    try:
+        params = torch.load(ckpt_path)
+    except:
+        return None, None, None, None, None, None
     model_state_dict = params['model']
     config = params['config']
     algo_name = params['algo_name']

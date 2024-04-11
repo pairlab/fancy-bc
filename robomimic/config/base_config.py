@@ -89,6 +89,7 @@ class BaseConfig(Config):
         self.experiment.logging.wandb_proj_name = "debug"           # project name if using wandb
         self.experiment.logging.wandb_group = None
         self.experiment.auto_resume = False                         # whether to automatically load and resume experiment
+        self.experiment.do_profile = False
 
 
         ## save config - if and when to save model checkpoints ##
@@ -145,7 +146,7 @@ class BaseConfig(Config):
         # The "log" directory will contain tensorboard and stdout txt logs. The "models" directory
         # will contain saved model checkpoints. The "videos" directory contains evaluation rollout
         # videos.
-        self.train.output_dir = "../{}_trained_models".format(self.algo_name)
+        self.train.output_dir = "../results/{}_trained_models".format(self.algo_name)
 
 
         ## dataset loader config ##

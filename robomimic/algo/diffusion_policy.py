@@ -9,6 +9,9 @@ from packaging.version import parse as parse_version
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch._dynamo
+# torch._dynamo.config.verbose=True
+# torch._dynamo.config.suppress_errors = True
 # requires diffusers==0.11.1
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.schedulers.scheduling_ddim import DDIMScheduler
@@ -77,11 +80,19 @@ class DiffusionPolicyUNet(PolicyAlgo):
         nets = nn.ModuleDict({
             'policy': nn.ModuleDict({
                 'obs_encoder': obs_encoder,
+                # 'noise_pred_net': torch.compile(noise_pred_net)
                 'noise_pred_net': noise_pred_net
             })
         })
+        # nets = nn.ModuleDict({
+        #     'policy': nn.ModuleDict({
+        #         'obs_encoder': obs_encoder,
+        #         'noise_pred_net': torch.compile(noise_pred_net)
+        #     })
+        # })
 
         nets = nets.float().to(self.device)
+        # nets = torch.compile(nets)
         
         # setup noise scheduler
         noise_scheduler = None
