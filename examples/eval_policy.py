@@ -6,6 +6,8 @@ from omegaconf import OmegaConf
 from pathlib import Path
 
 import torch
+import json
+import h5py
 
 import robomimic
 import robomimic.utils.file_utils as FileUtils
@@ -99,9 +101,15 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
 
     return stats
 
-def main():
+def eval_isaacgym(ckpt_path=None):
 
-    ckpt_path = "../bc_trained_models/test/20240403143734/models/model_epoch_2000.pth"
+    ckpt_path = ckpt_path or "../bc_trained_models/test/20240403143734/models/model_epoch_2000.pth"
+    ckpt_config = Path(ckpt_path).parent.parent / "config.json"
+    with open(ckpt_config, "r") as f:
+        cfg = json.load(f)
+    dataset_path = cfg['train']['dataset']
+    with h5py.File(dataset_path, "r") as f:
+        env_args = json.loads(f.attrs["env_args"])
 
     device = TorchUtils.get_torch_device(try_to_use_cuda=True)
 
@@ -151,7 +159,20 @@ def main():
     print(stats)
     video_writer.close()
 
+def eval_bidexhands(ckpt_path=None):
+
+
+def main(args):
+    if args.isaacgym:
+        eval_isaacgym(args.ckpt_path)
+    elif args.bidexhands:
+        eval_bidexhands(args.ckpt_path)
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ckpt_path", type=str, default="")
+    parser.add_argument("--isaacgym", action="store_true")
+    parser.add_argument("--bidexhands", action="store_true")
+    main(parser.parse_args())
 
