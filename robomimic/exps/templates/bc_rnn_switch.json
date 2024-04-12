@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "bidex_scissors_rnn_lowdim",
+        "name": "bidex_switch_rnn_lowdim",
         "validate": false,
         "logging": {
             "terminal_output_to_txt": true,
@@ -186,8 +186,8 @@
                     "right_hand_dof_vel",
                     "right_hand_euler",
                     "right_hand_pos",
-                    "scissors_left_handle_pos",
-                    "scissors_right_handle_pos"
+                    "switch_left_handle_pos",
+                    "switch_right_handle_pos"
                 ],
                 "rgb": [],
                 "depth": [],
