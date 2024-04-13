@@ -441,6 +441,22 @@ class SequenceDataset(torch.utils.data.Dataset):
         """
         if self.hdf5_cache_mode == "all":
             output = self.getitem_cache[index]
+        
+            # Normalize actions after retrieving from cache
+            ac_dict = OrderedDict()
+            for k in self.action_keys:
+                ac = output[k]
+                # expand action shape if needed
+                if len(ac.shape) == 1:
+                    ac = ac.reshape(-1, 1)
+                ac_dict[k] = ac
+            
+            # normalize actions
+            action_normalization_stats = self.get_action_normalization_stats()
+            ac_dict = ObsUtils.normalize_dict(ac_dict, normalization_stats=action_normalization_stats)
+
+            # concatenate all action components
+            output["actions"] = AcUtils.action_dict_to_vector(ac_dict)
         else:
             output = self.get_item(index)
 
@@ -987,8 +1003,8 @@ class MetaDataset(torch.utils.data.Dataset):
 
         # cache mode "all" not supported! The action normalization stats of each
         # dataset will change after the datasets are already initialized
-        for ds in self.datasets:
-            assert ds.hdf5_cache_mode != "all"
+        # for ds in self.datasets:
+        #     assert ds.hdf5_cache_mode != "all"
 
         # TODO: comment
         action_stats = self.get_action_stats()
