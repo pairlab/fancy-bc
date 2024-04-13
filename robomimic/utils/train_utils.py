@@ -56,6 +56,7 @@ def get_exp_dir(config, auto_remove_exp_dir=False):
         # relative paths are specified relative to robomimic module location
         base_output_dir = os.path.join(robomimic.__path__[0], base_output_dir)
     base_output_dir = os.path.join(base_output_dir, config.experiment.name)
+    base_output_dir = os.path.join(base_output_dir, time_str)
     if os.path.exists(base_output_dir):
         if not auto_remove_exp_dir:
             ans = input("WARNING: model directory ({}) already exists! \noverwrite? (y/n)\n".format(base_output_dir))
@@ -68,19 +69,19 @@ def get_exp_dir(config, auto_remove_exp_dir=False):
     # only make model directory if model saving is enabled
     output_dir = None
     if config.experiment.save.enabled:
-        output_dir = os.path.join(base_output_dir, time_str, "models")
+        output_dir = os.path.join(base_output_dir, "models")
         os.makedirs(output_dir)
 
     # tensorboard directory
-    log_dir = os.path.join(base_output_dir, time_str, "logs")
+    log_dir = os.path.join(base_output_dir, "logs")
     os.makedirs(log_dir)
 
     # video directory
-    video_dir = os.path.join(base_output_dir, time_str, "videos")
+    video_dir = os.path.join(base_output_dir, "videos")
     os.makedirs(video_dir)
 
     # vis directory
-    vis_dir = os.path.join(base_output_dir, time_str, "vis")
+    vis_dir = os.path.join(base_output_dir, "vis")
     os.makedirs(vis_dir)
     
     return log_dir, output_dir, video_dir, vis_dir
