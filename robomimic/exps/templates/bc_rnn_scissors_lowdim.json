@@ -40,7 +40,7 @@
         "data": null,
         "load_env_meta": false,
         "data_format": "robomimic",
-        "output_dir": "../bc_trained_models",
+        "output_dir": "../bc_rnn_trained_models",
         "num_data_workers": 0,
         "hdf5_cache_mode": "low_dim",
         "hdf5_use_swmr": false,
@@ -138,7 +138,7 @@
             ]
         },
         "rnn": {
-            "enabled": false,
+            "enabled": true,
             "horizon": 10,
             "hidden_dim": 400,
             "rnn_type": "LSTM",
