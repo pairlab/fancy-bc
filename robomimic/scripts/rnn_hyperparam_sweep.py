@@ -76,14 +76,11 @@ def make_generator(config_file, script_file):
         name="data",
         group=4,
         values=[
-            [{"path": "/home/krishnans/lustre/datasets/bidex_scissors/rollouts_500.json"}],
-            [{"path": "/home/krishnans/lustre/datasets/bidex_switch/rollouts_500.json"}],
-            [{"path": "/home/krishnans/lustre/datasets/bidex_scissors/rollouts_500.json"}, {"path": "/home/krishnans/lustre/datasets/bidex_switch/rollouts_500.json"}],
             [{"path": "/home/krishnans/lustre/datasets/bidex_scissors/rollouts_1000.json"}],
             [{"path": "/home/krishnans/lustre/datasets/bidex_switch/rollouts_1000.json"}],
             [{"path": "/home/krishnans/lustre/datasets/bidex_scissors/rollouts_1000.json"}, {"path": "/home/krishnans/lustre/datasets/bidex_switch/rollouts_1000.json"}]
         ],
-        value_names=["scissors_500", "switch_500", "scissors_switch_500", "scissors_1000", "switch_1000", "scissors_switch_1000"]
+        value_names=["scissors_1000", "switch_1000", "scissors_switch_1000"]
     )
     return generator
 
