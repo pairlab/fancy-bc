@@ -131,3 +131,6 @@ venv.bak/
 macros_private.py
 *runs
 wandb/
+robomimic/exps/bidex
+robomimic/exps/bidex_rgb
+robomimic/exps/bidex_mt1_rgb
