@@ -1,13 +1,13 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "test",
+        "name": "bc_rnn_r3m_switch_scissors",
         "validate": false,
         "logging": {
             "terminal_output_to_txt": true,
             "log_tb": true,
-            "log_wandb": false,
-            "wandb_proj_name": "debug"
+            "log_wandb": true,
+            "wandb_proj_name": "robomimic"
         },
         "mse":{},
         "save": {
@@ -37,16 +37,24 @@
         }
     },
     "train": {
-        "data": null,
-        "output_dir": "../bc_trained_models",
+        "data": [{
+                "path": "/home/krishnans/lustre/datasets/bidex_scissors/rollouts_500.hdf5",
+		"weight": 0.5
+            }, 
+	    {
+                "path": "/home/krishnans/lustre/datasets/bidex_switch/rollouts_500.hdf5",
+		"weight": 0.5
+            }
+	],
+        "output_dir": "../bc_rnn_trained_models",
         "num_data_workers": 0,
         "hdf5_cache_mode": "all",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
-        "hdf5_normalize_obs": false,
+        "hdf5_normalize_obs": true,
         "hdf5_filter_key": null,
         "hdf5_validation_filter_key": null,
-        "seq_length": 1,
+        "seq_length": 15,
         "pad_seq_length": true,
         "frame_stack": 1,
         "pad_frame_stack": true,
@@ -134,7 +142,7 @@
             ]
         },
         "rnn": {
-            "enabled": false,
+            "enabled": true,
             "horizon": 10,
             "hidden_dim": 400,
             "rnn_type": "LSTM",
@@ -163,12 +171,29 @@
         "modalities": {
             "obs": {
                 "low_dim": [
-                    "robot0_eef_pos",
-                    "robot0_eef_quat",
-                    "robot0_gripper_qpos",
-                    "object"
+                    "left_fingertip_force", 
+                    "left_fingertip_state",
+                    "left_hand_action",
+                    "left_hand_dof_force",
+                    "left_hand_dof_pos",
+                    "left_hand_dof_vel",
+                    "left_hand_euler",
+                    "left_hand_pos",
+                    "object_angvel",
+                    "object_linvel",
+                    "object_pose",
+                    "right_fingertip_force",
+                    "right_fingertip_state",
+                    "right_hand_action",
+                    "right_hand_dof_force",
+                    "right_hand_dof_pos",
+                    "right_hand_dof_vel",
+                    "right_hand_euler",
+                    "right_hand_pos",
+                    "scissors_left_handle_pos",
+                    "scissors_right_handle_pos"
                 ],
-                "rgb": [],
+                "rgb": ["fixed_camera"],
                 "depth": [],
                 "scan": []
             },
