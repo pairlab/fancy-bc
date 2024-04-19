@@ -151,8 +151,8 @@
                 },
                 "obs_randomizer_class": "CropRandomizer",
                 "obs_randomizer_kwargs": {
-                    "crop_height": 19,
-                    "crop_width": 19,
+                    "crop_height": 200,
+                    "crop_width": 200,
                     "num_crops": 1,
                     "pos_enc": false
                 }

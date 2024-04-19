@@ -1,6 +1,9 @@
 import isaacgym
-import isaacgymenvs
+from isaacgym import gymapi
+import os
+import isaacgym
 import numpy as np
+from copy import deepcopy
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 from pathlib import Path
@@ -18,9 +21,20 @@ from robomimic.envs.env_base import EnvBase
 from robomimic.algo import RolloutPolicy
 import imageio
 
+try:
+    from bidexhands.tasks.hand_base.vec_task import VecTaskPython
+    from bidexhands.utils.config import parse_sim_params, load_cfg, retrieve_cfg
+    from bidexhands.tasks.shadow_hand_scissors import ShadowHandScissors
+    from bidexhands.tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
+    from bidexhands.tasks.shadow_hand_re_orientation import ShadowHandReOrientation
+    from bidexhands.tasks.shadow_hand_switch import ShadowHandSwitch
+    from bidexhands.utils.parse_task import parse_task
+except:
+    raise ImportError("bidexhands is not installed")
 
-plt_root = Path("../../policy_learning_toolkit/").expanduser()
-igenvs_root = Path("~/diff_manip/external/IsaacGymEnvs").expanduser()
+plt_root = os.getenv("POLICY_LEARNING_TOOLKIT_ROOT", Path("../../policy_learning_toolkit/").expanduser())
+igenvs_root = os.getenv("ISAACGYM_ROOT", Path("~/diff_manip/external/IsaacGymEnvs").expanduser())
+bidexenvs_root = os.getenv("BIDEXHANDS_ROOT", Path("~/ngc/DexterousHands/bidexhands").expanduser())
 
 
 def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5, camera_names=None):
@@ -57,12 +71,16 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
     try:
         for step_i in range(horizon):
             obs_dict = {}
+            if hasattr(env, 'task'):
+                env_obs_dict = env.task.obs_dict
+            else:
+                env_obs_dict = env.obs_dict
             for k in obs_keys:
-                if "camera" in k:
-                    obs_dict[k] = env.obs_dict[k].permute(0, 3, 1, 2)
+                if "camera" in k and env_obs_dict[k].shape[3] == 3:
+                    obs_dict[k] = env_obs_dict[k].permute(0, 3, 1, 2)
                     print(obs_dict[k].shape)
                 else:
-                    obs_dict[k] = env.obs_dict[k]
+                    obs_dict[k] = env_obs_dict[k]
 
             # get action from policy
             act = policy(ob=obs_dict, batched=True)
@@ -72,7 +90,8 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
 
             # compute reward
             total_reward += r
-            success = info["success"].cpu().numpy().item()
+            success_key = "success" if "success" in info else "successes"
+            success = info[success_key].cpu().numpy()
 
             # visualization
             if render:
@@ -87,7 +106,7 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
                 video_count += 1
 
             # break if done or if success
-            if done or success:
+            if done.any() or success.any():
                 break
 
             # update for next iter
@@ -107,7 +126,7 @@ def eval_isaacgym(ckpt_path=None):
     ckpt_config = Path(ckpt_path).parent.parent / "config.json"
     with open(ckpt_config, "r") as f:
         cfg = json.load(f)
-    dataset_path = cfg['train']['dataset']
+    dataset_path = cfg['train']['data'][0]['path']  # cfg['train']['dataset']
     with h5py.File(dataset_path, "r") as f:
         env_args = json.loads(f.attrs["env_args"])
 
@@ -157,22 +176,123 @@ def eval_isaacgym(ckpt_path=None):
         camera_names=["hand_camera"]
     )
     print(stats)
-    video_writer.close()
+    # video_writer.close()
 
-def eval_bidexhands(ckpt_path=None):
+from dataclasses import dataclass, field
+from typing import List
 
+@dataclass
+class BidexEnvArgs:
+    test: bool = False
+    play: bool = False
+    resume: int = 0
+    checkpoint: str = "Base"
+    headless: bool = False
+    horovod: bool = False
+    task: str = "ShadowHandScissors"
+    task_type: str = "Python"
+    rl_device: str = "cuda:0"
+    logdir: str = "logs/"
+    experiment: str = "Base"
+    metadata: bool = False
+    cfg_train: str = "Base"
+    cfg_env: str = "Base"
+    num_envs: int = 1
+    episode_length: int = 0
+    seed: int = field(default=None)
+    max_iterations: int = -1
+    steps_num: int = -1
+    minibatch_size: int = -1
+    randomize: bool = False
+    torch_deterministic: bool = False
+    algo: str = "ppo"
+    model_dir: str = ""
+    datatype: str = "random"
+    sim_device: str = "cuda:0"
+    device: str = "cuda"
+    pipeline: str = "gpu"
+    device_id: int = 0
+    num_threads: int = 0
+    subscenes: int = 0
+    slices: int = 0
+    headless: bool = True
+    physics_engine: gymapi.SimType = gymapi.SIM_PHYSX
+    use_rlg_config: bool = False
+
+    def __post_init__(self):
+        self.logdir, self.cfg_train, self.cfg_env = self.retrieve_cfg()
+        self.use_gpu = self.sim_device.split(':')[0] in ["gpu", "cuda"]
+        self.use_gpu_pipeline = self.pipeline == "gpu"
+
+    def retrieve_cfg(self):
+        _, cfg_train, cfg_env = retrieve_cfg(self, self.use_rlg_config)
+        if self.logdir == "logs/":
+            self.logdir = f"logs/{self.task}/{self.algo}"
+        if self.cfg_train == "Base":
+            self.cfg_train = cfg_train
+        if self.cfg_env == "Base":
+            self.cfg_env = cfg_env
+        return self.logdir, self.cfg_train, self.cfg_env
+
+
+def create_bidex_env(task, algo, use_rlgames):
+    description = "Isaac Gym Example"
+    headless = False
+    os.chdir(bidexenvs_root)
+    env_args = BidexEnvArgs(task=task, algo=algo, use_rlg_config=use_rlgames)
+
+    cfg, cfg_train, logdir = load_cfg(env_args)
+    sim_params = parse_sim_params(env_args, cfg, cfg_train)
+
+    # create env 
+    # def parse_task(args, cfg, cfg_train, sim_params, agent_index)
+    task = eval(env_args.task)(
+                cfg=cfg,
+                sim_params=sim_params,
+                physics_engine=env_args.physics_engine,
+                device_type=env_args.device,
+                device_id=env_args.device_id,
+                headless=env_args.headless,
+                is_multi_agent=False)
+    env = VecTaskPython(task, rl_device=env_args.rl_device)
+    return env
+
+def eval_bidexhands(task, ckpt_path, rlgames):
+    # store cwd
+    cwd = os.getcwd()
+    env = create_bidex_env(task=task, algo="ppo", use_rlgames=rlgames)
+    env.rollout_exceptions = ()
+    env.device = env.task.device
+    # change back to cwd
+    os.chdir(cwd)
+    policy, ckpt_dict = FileUtils.policy_from_checkpoint(ckpt_path=ckpt_path, device=env.task.device, verbose=True)
+
+    rollout_horizon = 150 if task.endswith("Scissors") else 125
+    stats = rollout(
+        policy=policy, 
+        env=env, 
+        horizon=rollout_horizon, 
+        render=False, 
+        # video_writer=video_writer, 
+        # video_skip=5, 
+        camera_names=["hand_camera"]
+    )
+    print(stats)
 
 def main(args):
     if args.isaacgym:
         eval_isaacgym(args.ckpt_path)
     elif args.bidexhands:
-        eval_bidexhands(args.ckpt_path)
+        eval_bidexhands(args.task, args.ckpt_path, args.rlgames)
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--ckpt_path", type=str, default="")
-    parser.add_argument("--isaacgym", action="store_true")
-    parser.add_argument("--bidexhands", action="store_true")
-    main(parser.parse_args())
+    script_parser = argparse.ArgumentParser()
+    script_parser.add_argument("--ckpt_path", type=str, default="")
+    script_parser.add_argument("--hdf5_path", type=str, default="")
+    script_parser.add_argument("--isaacgym", action="store_true")
+    script_parser.add_argument("--bidexhands", action="store_true")
+    script_parser.add_argument("--task", type=str, default="ShadowHandScissors")
+    script_parser.add_argument("--rlgames","--rlg", action="store_true")
+    main(script_parser.parse_args())
 
