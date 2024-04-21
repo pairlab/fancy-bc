@@ -257,7 +257,7 @@ def create_bidex_env(task, algo, use_rlgames):
     env = VecTaskPython(task, rl_device=env_args.rl_device)
     return env
 
-def eval_bidexhands(task, ckpt_path, rlgames):
+def eval_bidexhands(task, ckpt_path, rlgames, hdf5_path=None):
     # store cwd
     cwd = os.getcwd()
     env = create_bidex_env(task=task, algo="ppo", use_rlgames=rlgames)
@@ -278,12 +278,25 @@ def eval_bidexhands(task, ckpt_path, rlgames):
         camera_names=["hand_camera"]
     )
     print(stats)
+    visualize_feature_layer(policy.policy, env, hdf5_path)
+
+def visualize_feature_layer(policy, env, hdf5_path=None):
+    data = h5py.File(hdf5_path, "r")
+    cam_obs_keys = list(filter(lambda x: "camera" in x, list(data["data/demo_0/obs"].keys())))
+    print(cam_obs_keys)
+    breakpoint()
+    input_image = data["data/demo_0/obs"][cam_obs_keys[0]]
+    print(input_image.shape)
+    breakpoint()
+    image_encoder = policy.nets['policy'].nets['encoder'].nets['obs'].obs_nets[cam_obs_keys[0]]
+    feature_maps_layer, softmax_layer = image_encoder.nets[0], image_encoder.nets[1]
+    make_model_img_feature_plot(hdf5_path, "", input_image, feature_maps_layer, softmax_layer)
 
 def main(args):
     if args.isaacgym:
         eval_isaacgym(args.ckpt_path)
     elif args.bidexhands:
-        eval_bidexhands(args.task, args.ckpt_path, args.rlgames)
+        eval_bidexhands(args.task, args.ckpt_path, args.rlgames, args.hdf5_path)
 
 if __name__ == "__main__":
     import argparse
