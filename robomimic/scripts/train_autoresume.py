@@ -76,7 +76,7 @@ class AdlrAutoresume:
         ```
     """
 
-    def __new__(cls: type["AdlrAutoresume"], *args, **kwargs) -> "AdlrAutoresume":
+    def __new__(cls, *args, **kwargs) -> "AdlrAutoresume":
         if AutoResume is not None:
             return super().__new__(cls, *args, **kwargs)
         else:
