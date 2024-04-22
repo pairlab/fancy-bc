@@ -76,14 +76,6 @@ class AdlrAutoresume:
         ```
     """
 
-    def __new__(cls, *args, **kwargs) -> "AdlrAutoresume":
-        if AutoResume is not None:
-            return super().__new__(cls, *args, **kwargs)
-        else:
-            blank = super().__new__(cls)
-            blank.details = {}
-            return blank
-
     def __init__(self, ckpt_dir) -> None:
         AutoResume.init()
         self.details = AutoResume.get_resume_details() or {
