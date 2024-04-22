@@ -318,7 +318,7 @@ def train(config, device):
     # number of learning steps per epoch (defaults to a full dataset pass)
     train_num_steps = config.experiment.epoch_every_n_steps
     valid_num_steps = config.experiment.validation_epoch_every_n_steps
-    autoresume = AdlrAutoresume() if AutoResume else None
+    autoresume = AdlrAutoresume(ckpt_dir) if AutoResume else None
 
     for epoch in range(1, config.train.num_epochs + 1): # epoch numbers start at 1
         step_log = TrainUtils.run_epoch(
