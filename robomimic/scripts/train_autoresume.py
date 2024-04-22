@@ -81,13 +81,14 @@ class AdlrAutoresume:
         self.details = AutoResume.get_resume_details() or {
             "id": os.environ.get("SLURM_JOB_ID")
         }
-        self.ckpt_dir = self.details.get("ckpt_dir", ckpt_dir)
+        self.ckpt_dir = ckpt_dir
         self._autoresume_sent = False
 
     def _request_autoresume(self, epoch: int, model: torch.nn.Module, config: dict) -> None:
         epoch_ckpt_name = "model_epoch_{}".format(epoch)
         ckpt_path = os.path.join(self.ckpt_dir, epoch_ckpt_name + ".pth")
         self.details["checkpoint"] = ckpt_path
+        self.details["epoch"] = epoch
         AutoResume.request_resume(user_dict=self.details)
 
     @property
@@ -168,8 +169,7 @@ def train(config, device):
 
     # create environment
     envs = OrderedDict()
-    if AutoResume is not None:
-        AutoResume.init()
+    autoresume = AdlrAutoresume(ckpt_dir) if AutoResume else None
 
     if config.experiment.rollout.enabled:
         # create environments for validation runs
@@ -239,6 +239,8 @@ def train(config, device):
 
     # if checkpoint is specified, load in model weights
     ckpt_path = config.experiment.ckpt_path
+    if autoresume is not None and autoresume.details.get("checkpoint", None) is not None:
+        ckpt_path = autoresume.details["checkpoint"]
     if ckpt_path is not None:
         print("LOADING MODEL WEIGHTS FROM " + ckpt_path)
         from robomimic.utils.file_utils import maybe_dict_from_checkpoint
@@ -310,9 +312,11 @@ def train(config, device):
     # number of learning steps per epoch (defaults to a full dataset pass)
     train_num_steps = config.experiment.epoch_every_n_steps
     valid_num_steps = config.experiment.validation_epoch_every_n_steps
-    autoresume = AdlrAutoresume(ckpt_dir) if AutoResume else None
+    start_ep = 1
+    if autoresume is not None and autoresume.details.get("epoch", None) is not None:
+        ckpt_dir = autoresume.details.get("epoch", 1) + 1
 
-    for epoch in range(1, config.train.num_epochs + 1): # epoch numbers start at 1
+    for epoch in range(start_ep, config.train.num_epochs + 1): # epoch numbers start at 1
         step_log = TrainUtils.run_epoch(
             model=model,
             data_loader=train_loader,
