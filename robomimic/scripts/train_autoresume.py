@@ -314,7 +314,7 @@ def train(config, device):
     valid_num_steps = config.experiment.validation_epoch_every_n_steps
     start_ep = 1
     if autoresume is not None and autoresume.details.get("epoch", None) is not None:
-        ckpt_dir = autoresume.details.get("epoch", 1) + 1
+        start_ep = int(autoresume.details.get("epoch", "1")) + 1
 
     for epoch in range(start_ep, config.train.num_epochs + 1): # epoch numbers start at 1
         step_log = TrainUtils.run_epoch(
