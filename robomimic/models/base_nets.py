@@ -89,7 +89,7 @@ class Sequential(torch.nn.Sequential, Module):
     """
     def __init__(self, *args):
         for arg in args:
-            assert isinstance(arg, Module)
+            assert isinstance(arg, (Module, torch.nn.Module))
         torch.nn.Sequential.__init__(self, *args)
         self.fixed = False
 
