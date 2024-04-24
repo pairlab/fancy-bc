@@ -232,7 +232,7 @@ class Algo(object):
             if k in batch and batch[k] is not None:
                 batch[k] = ObsUtils.process_obs_dict(batch[k])
                 if obs_normalization_stats is not None:
-                    batch[k] = ObsUtils.normalize_dict(batch[k], obs_normalization_stats=obs_normalization_stats)
+                    batch[k] = ObsUtils.normalize_dict(batch[k], normalization_stats=obs_normalization_stats)
         return batch
 
     def train_on_batch(self, batch, epoch, validate=False):
