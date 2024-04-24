@@ -38,11 +38,11 @@
     },
     "train": {
         "data": [{
-                "path": "/home/krishnans/lustre/datasets/bidex_scissors/rollouts_500.hdf5",
+                "path": "/home/krishnans/lustre/datasets/bidex_scissors/rollouts_1000.hdf5",
 		"weight": 0.5
             }, 
 	    {
-                "path": "/home/krishnans/lustre/datasets/bidex_switch/rollouts_500.hdf5",
+                "path": "/home/krishnans/lustre/datasets/bidex_switch/rollouts_1000.hdf5",
 		"weight": 0.5
             }
 	],
@@ -61,6 +61,8 @@
         "dataset_keys": [
             "actions"
         ],
+        "action_keys": ["actions"],
+        "action_config": {"actions": {"type": "continuous", "dim": 22, "normalization": "min_max"}},
         "goal_mode": null,
         "cuda": true,
         "batch_size": 100,
@@ -100,7 +102,7 @@
             "low_noise_eval": true
         },
         "gmm": {
-            "enabled": false,
+            "enabled": true,
             "num_modes": 5,
             "min_std": 0.0001,
             "std_activation": "softplus",
