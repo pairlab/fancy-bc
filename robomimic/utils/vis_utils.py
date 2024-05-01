@@ -8,6 +8,7 @@ import os
 
 import robomimic.utils.tensor_utils as TensorUtils
 import robomimic.utils.obs_utils as ObsUtils
+import torch
 
 
 def image_tensor_to_numpy(image):
@@ -90,6 +91,100 @@ def visualize_image_randomizer(original_image, randomized_image, randomizer_name
     plt.subplots_adjust(wspace=0.5, hspace=0.5)
 
     # Show the entire grid of subplots
+    plt.show()
+
+
+
+def make_cam_obs_plot(policy, tensor_data_dict, cam_obs_key):
+    obs_encoder = policy.nets['policy'].nets['encoder'].nets['obs']
+    obs_randomizer = obs_encoder.obs_randomizers[cam_obs_key]
+    obs_net = obs_encoder.obs_nets[cam_obs_key] # Spatial Softmax
+    backbone = obs_net.nets[:1]
+
+    obs_processed = obs_randomizer[0].forward_in(tensor_data_dict['obs'][cam_obs_key].permute(0, 3, 1, 2)).requires_grad_(True)
+
+    obs_backbone_feat = backbone(obs_processed)
+    weights = obs_net.nets[1](obs_backbone_feat.detach())
+
+    indices = weights.argmax(dim=-1).to(torch.int64).detach()
+
+    num_keypoints = indices.shape[-1] // 2
+    x_indices = indices[..., :num_keypoints] 
+    y_indices = indices[..., num_keypoints:]
+
+    max_features = obs_backbone_feat[torch.arange(obs_backbone_feat.shape[0]).unsqueeze(-1), 
+                                    y_indices, 
+                                    x_indices]
+    sum_max_features = max_features.sum(dim=1)
+
+    sum_max_features.sum().backward()
+
+    # Normalize the gradients for visualization
+    gradients = obs_processed.grad
+    gradients = gradients - gradients.min() 
+    gradients /= gradients.max()
+
+    img = obs_processed[0].permute(1, 2, 0).detach().cpu().numpy()
+
+    # Upsample the gradients to match the original image size
+    if gradients.shape[2] != img.shape[0] or gradients.shape[3] != img.shape[1]:
+        gradients_upsampled = torch.nn.functional.interpolate(gradients, size=img.shape, mode='bilinear', align_corners=False)
+    else:
+        gradients_upsampled = gradients
+
+    # Convert to numpy and transpose (H, W, C)
+    gradients_upsampled = gradients_upsampled.cpu().numpy()[0].transpose(1, 2, 0)
+
+    # Plot the gradient heatmap on top of the original image
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.imshow(img)  
+    ax.imshow(gradients_upsampled, cmap='jet', alpha=0.5)
+    ax.set_title("Gradient Heatmap")
+    ax.axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def make_model_img_feature_plot(
+    hdf5_path,
+    save_path,
+    images,
+    model,
+    feature_maps_layer=None,
+    softmax_layer=None
+):
+    feature_maps = feature_maps_layer(images)
+
+    # Assuming 'feature_maps' is the output of your ResNet18 convnet
+    # and 'softmax_weights' is the softmax weights after applying spatial softmax
+
+    # Apply softmax along spatial dimensions
+    softmax_weights = softmax_layer(feature_maps)
+
+    # Weighted sum to get attention-weighted feature maps
+    attention_feature_maps = np.sum(feature_maps * softmax_weights, axis=(2, 3))
+
+    # Normalize attention feature maps for visualization
+    normalized_attention = (attention_feature_maps - np.min(attention_feature_maps)) / (np.max(attention_feature_maps) - np.min(attention_feature_maps))
+
+    # Generate heatmap
+    heatmap = np.uint8(255 * normalized_attention)
+
+    # Resize heatmap to match original image size if necessary
+
+    # Overlay heatmap onto original image
+    overlayed_image = images.copy()
+    overlayed_image[:,:,0] += heatmap # Add heatmap to the red channel
+
+    # Plot the original image and overlayed image
+    plt.figure(figsize=(10, 5))
+    plt.subplot(1, 2, 1)
+    plt.imshow(images)
+    plt.title('Original Image')
+    plt.subplot(1, 2, 2)
+    plt.imshow(overlayed_image)
+    plt.title('Attention Heatmap Overlay')
     plt.show()
 
 
