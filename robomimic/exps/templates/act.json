@@ -52,6 +52,8 @@
         "dataset_keys": [
             "actions"
         ],
+        "action_keys": ["actions"],
+        "action_config": {"actions": {"type": "continuous", "dim": 22, "normalization": "min_max"}},
         "goal_mode": null,
         "cuda": true,
         "batch_size": 128,
