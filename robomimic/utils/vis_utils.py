@@ -95,7 +95,7 @@ def visualize_image_randomizer(original_image, randomized_image, randomizer_name
 
 
 
-def make_cam_obs_plot(policy, tensor_data_dict, cam_obs_key):
+def make_image_features_plot(policy, tensor_data_dict, cam_obs_key):
     obs_encoder = policy.nets['policy'].nets['encoder'].nets['obs']
     obs_randomizer = obs_encoder.obs_randomizers[cam_obs_key]
     obs_net = obs_encoder.obs_nets[cam_obs_key] # Spatial Softmax
