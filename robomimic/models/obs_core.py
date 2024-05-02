@@ -70,6 +70,7 @@ class OneHotEncoder(EncoderCore):
         """
         super(OneHotEncoder, self).__init__(input_shape=input_shape)
         self.num_classes = num_classes
+        self.num_dims = num_dims
         self.encoder = nn.Linear(num_classes, num_dims)
 
     def __init_subclass__(cls, **kwargs):
@@ -98,13 +99,13 @@ class OneHotEncoder(EncoderCore):
         Returns:
             out_shape ([int]): list of integers corresponding to output shape
         """
-        return [self.num_classes]
+        return [self.num_dims]
 
     def forward(self, inputs):
         """
         Forward pass through one hot encoder.
         """
-        inputs = TensorUtils.to_one_hot(inputs, num_class=self.num_classes)
+        inputs = TensorUtils.to_one_hot(inputs.to(torch.int64), num_class=self.num_classes)
         return self.encoder(inputs)
 
 
