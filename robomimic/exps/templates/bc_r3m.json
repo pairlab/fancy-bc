@@ -6,7 +6,7 @@
         "logging": {
             "terminal_output_to_txt": true,
             "log_tb": true,
-            "log_wandb": true,
+            "log_wandb": false,
             "wandb_proj_name": "robomimic"
         },
         "mse":{},
@@ -48,8 +48,8 @@
 	],
 	"load_env_meta": false,
         "output_dir": "../bc_rnn_trained_models",
-        "num_data_workers": 0,
-        "hdf5_cache_mode": "all",
+        "num_data_workers": 4,
+        "hdf5_cache_mode": "low_dim",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
         "hdf5_normalize_obs": true,
@@ -218,7 +218,7 @@
                     "backbone_class": "R3MConv",
                     "backbone_kwargs": {
                         "mvp_model_class": "resnet18",
-                        "freeze": false
+                        "freeze": true
                     },
                     "pool_class": "SpatialSoftmax",
                     "pool_kwargs": {

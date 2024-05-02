@@ -1,12 +1,12 @@
 import isaacgym
-from isaacgym import gymapi
+import isaacgymenvs
 import os
 import isaacgym
 import numpy as np
 from copy import deepcopy
 from hydra import compose, initialize_config_dir
-from omegaconf import OmegaConf
 from pathlib import Path
+from robomimic.utils.vis_utils import make_model_img_feature_plot
 
 import torch
 import json
@@ -16,21 +16,9 @@ import robomimic
 import robomimic.utils.file_utils as FileUtils
 import robomimic.utils.torch_utils as TorchUtils
 import robomimic.utils.tensor_utils as TensorUtils
-import robomimic.utils.obs_utils as ObsUtils
-from robomimic.envs.env_base import EnvBase
 from robomimic.algo import RolloutPolicy
-import imageio
 
-try:
-    from bidexhands.tasks.hand_base.vec_task import VecTaskPython
-    from bidexhands.utils.config import parse_sim_params, load_cfg, retrieve_cfg
-    from bidexhands.tasks.shadow_hand_scissors import ShadowHandScissors
-    from bidexhands.tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
-    from bidexhands.tasks.shadow_hand_re_orientation import ShadowHandReOrientation
-    from bidexhands.tasks.shadow_hand_switch import ShadowHandSwitch
-    from bidexhands.utils.parse_task import parse_task
-except:
-    raise ImportError("bidexhands is not installed")
+from env_bidex import create_bidex_env 
 
 plt_root = os.getenv("POLICY_LEARNING_TOOLKIT_ROOT", Path("../../policy_learning_toolkit/").expanduser())
 igenvs_root = os.getenv("ISAACGYM_ROOT", Path("~/diff_manip/external/IsaacGymEnvs").expanduser())
@@ -178,84 +166,6 @@ def eval_isaacgym(ckpt_path=None):
     print(stats)
     # video_writer.close()
 
-from dataclasses import dataclass, field
-from typing import List
-
-@dataclass
-class BidexEnvArgs:
-    test: bool = False
-    play: bool = False
-    resume: int = 0
-    checkpoint: str = "Base"
-    headless: bool = False
-    horovod: bool = False
-    task: str = "ShadowHandScissors"
-    task_type: str = "Python"
-    rl_device: str = "cuda:0"
-    logdir: str = "logs/"
-    experiment: str = "Base"
-    metadata: bool = False
-    cfg_train: str = "Base"
-    cfg_env: str = "Base"
-    num_envs: int = 1
-    episode_length: int = 0
-    seed: int = field(default=None)
-    max_iterations: int = -1
-    steps_num: int = -1
-    minibatch_size: int = -1
-    randomize: bool = False
-    torch_deterministic: bool = False
-    algo: str = "ppo"
-    model_dir: str = ""
-    datatype: str = "random"
-    sim_device: str = "cuda:0"
-    device: str = "cuda"
-    pipeline: str = "gpu"
-    device_id: int = 0
-    num_threads: int = 0
-    subscenes: int = 0
-    slices: int = 0
-    headless: bool = True
-    physics_engine: gymapi.SimType = gymapi.SIM_PHYSX
-    use_rlg_config: bool = False
-
-    def __post_init__(self):
-        self.logdir, self.cfg_train, self.cfg_env = self.retrieve_cfg()
-        self.use_gpu = self.sim_device.split(':')[0] in ["gpu", "cuda"]
-        self.use_gpu_pipeline = self.pipeline == "gpu"
-
-    def retrieve_cfg(self):
-        _, cfg_train, cfg_env = retrieve_cfg(self, self.use_rlg_config)
-        if self.logdir == "logs/":
-            self.logdir = f"logs/{self.task}/{self.algo}"
-        if self.cfg_train == "Base":
-            self.cfg_train = cfg_train
-        if self.cfg_env == "Base":
-            self.cfg_env = cfg_env
-        return self.logdir, self.cfg_train, self.cfg_env
-
-
-def create_bidex_env(task, algo, use_rlgames):
-    description = "Isaac Gym Example"
-    headless = False
-    os.chdir(bidexenvs_root)
-    env_args = BidexEnvArgs(task=task, algo=algo, use_rlg_config=use_rlgames)
-
-    cfg, cfg_train, logdir = load_cfg(env_args)
-    sim_params = parse_sim_params(env_args, cfg, cfg_train)
-
-    # create env 
-    # def parse_task(args, cfg, cfg_train, sim_params, agent_index)
-    task = eval(env_args.task)(
-                cfg=cfg,
-                sim_params=sim_params,
-                physics_engine=env_args.physics_engine,
-                device_type=env_args.device,
-                device_id=env_args.device_id,
-                headless=env_args.headless,
-                is_multi_agent=False)
-    env = VecTaskPython(task, rl_device=env_args.rl_device)
-    return env
 
 def eval_bidexhands(task, ckpt_path, rlgames, hdf5_path=None):
     # store cwd
@@ -280,15 +190,23 @@ def eval_bidexhands(task, ckpt_path, rlgames, hdf5_path=None):
     print(stats)
     visualize_feature_layer(policy.policy, env, hdf5_path)
 
-def visualize_feature_layer(policy, env, hdf5_path=None):
-    data = h5py.File(hdf5_path, "r")
-    cam_obs_keys = list(filter(lambda x: "camera" in x, list(data["data/demo_0/obs"].keys())))
+def visualize_feature_layer(policy, env, obs_dict=None, cam_obs_keys=None, data=None):
+    obs_encoder = policy.nets['policy'].nets['encoder'].nets['obs']
+    if cam_obs_keys is None:
+        cam_obs_keys = list(filter(lambda x: "camera" in x, list(obs_encoder.obs_nets.keys())))
     print(cam_obs_keys)
+
     breakpoint()
     input_image = data["data/demo_0/obs"][cam_obs_keys[0]]
+    data_dict = {'obs': {cam_obs_key: data['data/demo_0/obs/fixed_camera'][:] for cam_obs_key in cam_obs_keys},
+                'actions': data['data/demo_0/actions'][:]}
+    tensor_data_dict = TensorUtils.to_device(TensorUtils.to_tensor(data_dict), policy.policy.device)
+    input_dict = policy.policy.process_batch_for_training(tensor_data_dict)
+    input_dict = policy.policy.postprocess_batch_for_training(input_dict, obs_normalization_stats=None)
+
     print(input_image.shape)
     breakpoint()
-    image_encoder = policy.nets['policy'].nets['encoder'].nets['obs'].obs_nets[cam_obs_keys[0]]
+    image_encoder = obs_nets[cam_obs_keys[0]]
     feature_maps_layer, softmax_layer = image_encoder.nets[0], image_encoder.nets[1]
     make_model_img_feature_plot(hdf5_path, "", input_image, feature_maps_layer, softmax_layer)
 
