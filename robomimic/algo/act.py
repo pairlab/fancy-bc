@@ -233,18 +233,20 @@ class ACT(BC_VAE):
         # total loss is sum of reconstruction and KL, weighted by beta
         kl_loss = predictions["kl_loss"]
         recons_loss = predictions["reconstruction_loss"]
+        action_loss = recons_loss + self.kl_weight * kl_loss
+        losses = OrderedDict(
+            recons_loss=recons_loss,
+            kl_loss=kl_loss,
+        )
         if self.use_vq:
             probs = predictions["probs"]
             gt_labels = predictions["gt_labels"]
             vq_discrepancy = self.compute_vq_loss(probs, gt_labels)
-            recons_loss = recons_loss + vq_discrepancy * self.vq_weight
-
-        action_loss = recons_loss + self.kl_weight * kl_loss
-        return OrderedDict(
-            recons_loss=recons_loss,
-            kl_loss=kl_loss,
-            action_loss=action_loss,
-        )
+            action_loss = action_loss + vq_discrepancy * self.vq_weight
+        losses["action_loss"] = action_loss
+        if self.use_vq:
+            losses["vq_discrepancy"] = vq_discrepancy
+        return losses
 
     def compute_vq_loss(self, probs, gt_labels):
         # F.l1_loss(probs, gt_labels, reduction='mean')
