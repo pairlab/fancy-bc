@@ -52,6 +52,61 @@ class EncoderCore(BaseNets.Module):
         """
         ObsUtils.register_encoder_core(cls)
 
+"""
+================================================
+One Hot Encoder Networks
+================================================
+"""
+
+class OneHotEncoder(EncoderCore):
+    """
+    A network block that encodes categorical variables as one-hot vectors.
+    """
+    def __init__(self, input_shape, num_classes, num_dims):
+        """
+        Args:
+            input_shape (tuple): shape of input (not including batch dimension)
+            num_classes (int): number of classes to encode
+        """
+        super(OneHotEncoder, self).__init__(input_shape=input_shape)
+        self.num_classes = num_classes
+        self.encoder = nn.Linear(num_classes, num_dims)
+
+    def __init_subclass__(cls, **kwargs):
+        """
+        Hook method to automatically register all valid subclasses so we can keep track of valid observation encoders
+        in a global dict.
+
+        This global dict stores mapping from observation encoder network name to class.
+        We keep track of these registries to enable automated class inference at runtime, allowing
+        users to simply extend our base encoder class and refer to that class in string form
+        in their config, without having to manually register their class internally.
+        This also future-proofs us for any additional encoder classes we would
+        like to add ourselves.
+        """
+        ObsUtils.register_encoder_core(cls)
+
+    def output_shape(self, input_shape):
+        """
+        Function to compute output shape from inputs to this module. 
+
+        Args:
+            input_shape (iterable of int): shape of input. Does not include batch dimension.
+                Some modules may not need this argument, if their output does not depend 
+                on the size of the input, or if they assume fixed size input.
+
+        Returns:
+            out_shape ([int]): list of integers corresponding to output shape
+        """
+        return [self.num_classes]
+
+    def forward(self, inputs):
+        """
+        Forward pass through one hot encoder.
+        """
+        inputs = TensorUtils.to_one_hot(inputs, num_class=self.num_classes)
+        return self.encoder(inputs)
+
 
 """
 ================================================

@@ -1000,3 +1000,18 @@ class LowDimModality(Modality):
     @classmethod
     def _default_obs_unprocessor(cls, obs):
         return obs
+
+
+class OneHotModality(Modality):
+    """
+    Modality for one hot encoded observations
+    """
+    name = "one_hot"
+
+    @classmethod
+    def _default_obs_processor(cls, obs):
+        return obs
+
+    @classmethod
+    def _default_obs_unprocessor(cls, obs):
+        return obs

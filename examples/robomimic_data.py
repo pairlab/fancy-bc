@@ -3,6 +3,14 @@ import numpy as np
 import glob
 
 
+TASK_SETS = {
+    "allegro": ["spray_bottle", "scissors", "stapler"],
+    "bidex": ["scissors", "switch", "bottle"],
+    "myodex": ["reach", "push", "pick_and_place", "stack"],
+}
+
+
+
 def merge_hdf5_files(source_files, target_file):
     """
     Merge multiple HDF5 files into a single file, ensuring that "data/demo_X" keys
@@ -89,16 +97,33 @@ def convert_articulate_to_robosuite(dataset_path, next_obs=False, config_path=No
                 obs_data = demo_group["obs"][obs_key]
                 next_obs_group.create_dataset(obs_key, data=obs_data[1:])
 
+def add_task_id(dataset_paths, task_names, task_set):
+    for dataset_path, task_name in zip(dataset_paths, task_names):
+        task_id = TASK_SETS[task_set].index(task_name)
+        with h5py.File(dataset_path, "a") as data:
+            for ep in data["data"].keys():
+                task_idx = np.ones(data["data/{}".format(ep)].attrs["num_samples"]) * task_id
+                if "task_id" not in data["data/{}/obs".format(ep)].keys():
+                    data["data/{}/obs".format(ep)].create_dataset("task_id", data=task_idx)
+                else:
+                    print(f"skipping task_id for {dataset_path}, ep {ep}")
+                    assert data["data/{}/obs".format(ep)]["task_id"][:][0] == task_id, (
+                        f"expected task_id for {dataset_path} to be {task_id}, "
+                        f"but got {data['data/{}/obs'.format(ep)]['task_id'][:][0]}"
+                    )
+
 
 def main(args):
+    if "*" in args.dataset_path:
+        dataset_paths = glob.glob(args.dataset_path)
+    else:
+        dataset_paths = [x.strip() for x in args.dataset_path.split(",")]
     if args.merge:
         # check if wildcard in datasetpath, and if so, evaluate and pass in a list of datasets
-        if "*" in args.dataset_path:
-            dataset_paths = glob.glob(args.dataset_path)
-        else:
-            dataset_paths = [x.strip() for x in args.dataset_path.split(",")]
         merge_hdf5_files(dataset_paths, args.target_path)
-    else:
+    if args.add_task_id:
+        add_task_id(dataset_paths, args.task_set)
+    if args.convert:
         convert_articulate_to_robosuite(args.dataset_path, args.next_obs, args.config_path)
 
 
@@ -109,5 +134,7 @@ if __name__ == "__main__":
     parser.add_argument("--config_path", type=str, default="")
     parser.add_argument("--target_path", type=str, default="")
     parser.add_argument("--merge", action="store_true")
+    parser.add_argument("--convert", action="store_true")
+    parser.add_argument("--add_task_id", action="store_true")
     parser.add_argument("--next-obs", action="store_true")
     main(parser.parse_args())
