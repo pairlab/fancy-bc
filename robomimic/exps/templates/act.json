@@ -28,7 +28,7 @@
         "keep_all_videos": false,
         "video_skip": 5,
         "rollout": {
-            "enabled": true,
+            "enabled": false,
             "n": 50,
             "horizon": 400,
             "rate": 40,
@@ -37,7 +37,8 @@
         }
     },
     "train": {
-        "data": null,
+        "data": [{"path" : "/home/krishnans/ngc/DexterousHands/bidexhands/logs/ShadowHandSwitch/ppo/ppo_seed-1/rollouts_100.hdf5"}],
+        "load_env_meta": false,
         "output_dir":"../act_trained_models",
         "num_data_workers": 4,
         "hdf5_cache_mode": "low_dim",
@@ -52,9 +53,11 @@
         "dataset_keys": [
             "actions"
         ],
+        "action_keys": ["actions"],
+        "action_config": {"actions": {"type": "continuous", "dim": 52, "normalization": "min_max"}},
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 128,
+        "batch_size": 100,
         "num_epochs": 10000,
         "seed": 1
     },
@@ -88,19 +91,37 @@
             "dec_layers": 7,
             "nheads": 8,
             "latent_dim": 32,
-            "kl_weight": 20
+            "kl_weight": 10,
+            "vq": true,
+            "vq_dim": 64,
+            "vq_class": 512
         }
     },
     "observation": {
         "modalities": {
             "obs": {
                 "low_dim": [
-                    "robot0_eef_pos",
-                    "robot0_eef_quat",
-                    "robot0_gripper_qpos",
-                    "object"
+                    "left_fingertip_force", 
+                    "left_fingertip_state",
+                    "left_hand_action",
+                    "left_hand_dof_force",
+                    "left_hand_dof_pos",
+                    "left_hand_dof_vel",
+                    "left_hand_euler",
+                    "left_hand_pos",
+                    "object_angvel",
+                    "object_linvel",
+                    "object_pose",
+                    "right_fingertip_force",
+                    "right_fingertip_state",
+                    "right_hand_action",
+                    "right_hand_dof_force",
+                    "right_hand_dof_pos",
+                    "right_hand_dof_vel",
+                    "right_hand_euler",
+                    "right_hand_pos"
                 ],
-                "rgb": [],
+                "rgb": ["fixed_camera"],
                 "depth": [],
                 "scan": []
             },

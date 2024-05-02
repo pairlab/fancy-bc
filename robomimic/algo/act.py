@@ -43,12 +43,14 @@ class ACT(BC_VAE):
         self.normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
         self.nets = nn.ModuleDict()
+        torch.set_default_dtype(torch.float32)
         self.chunk_size = self.global_config["train"]["seq_length"]
         self.camera_keys = self.obs_config['modalities']['obs']['rgb'].copy()
         self.proprio_keys = self.obs_config['modalities']['obs']['low_dim'].copy()
         self.obs_keys = self.proprio_keys + self.camera_keys
 
         self.proprio_dim = 0
+        self.use_vq = self.algo_config.act.vq
         for k in self.proprio_keys:
             self.proprio_dim += self.obs_key_shapes[k][0]
 
@@ -59,12 +61,22 @@ class ACT(BC_VAE):
                          'backbone': self.algo_config.act.backbone,
                          'enc_layers': self.algo_config.act.enc_layers,
                          'dec_layers': self.algo_config.act.dec_layers,
+                         'vq': self.algo_config.act.vq,
+                         'vq_dim': self.algo_config.act.vq_dim,
+                         'vq_class': self.algo_config.act.vq_class,
                          'nheads': self.algo_config.act.nheads,
                          'latent_dim': self.algo_config.act.latent_dim,
                          'a_dim': self.ac_dim,
                          'state_dim': self.proprio_dim,
-                         'camera_names': self.camera_keys
+                         'camera_names': self.camera_keys,
+                         'ckpt_dir': self.global_config.train.output_dir,
+                         'task_name': self.global_config.experiment.name,
+                         'seed': self.global_config.train.seed,
+                         'num_steps': self.global_config.train.num_epochs,
+                         'action_dim': self.global_config.train.action_config['actions']['dim']
                          }
+
+        self.vq_weight = self.algo_config.act.vq_weight
         self.kl_weight = self.algo_config.act.kl_weight
         model, optimizer = build_ACT_model_and_optimizer(policy_config)
         self.nets["policy"] = model
@@ -105,6 +117,15 @@ class ACT(BC_VAE):
 
         return super(BC_VAE, self).train_on_batch(batch, epoch, validate=validate)
 
+    @torch.no_grad()
+    def vq_encode(self, qpos, actions, is_pad):
+        actions = actions[:, :self.nets["policy"].num_queries]
+        is_pad = is_pad[:, :self.nets["policy"].num_queries]
+
+        _, _, binaries, _, _ = self.nets["policy"].encode(qpos, actions, is_pad)
+
+        return binaries
+
     def _forward_training(self, batch):
         """
         Internal helper function for BC algo class. Compute forward pass
@@ -134,20 +155,26 @@ class ACT(BC_VAE):
         is_pad = batch['obs']['pad_mask'] == 0  # from 1.0 or 0 to False and True
         is_pad = is_pad.squeeze(dim=-1)
 
-        a_hat, is_pad_hat, (mu, logvar) = self.nets["policy"](qpos, images, env_state, actions, is_pad)
-        total_kld, dim_wise_kld, mean_kld = self.kl_divergence(mu, logvar)
+        a_hat, is_pad_hat, (mu, logvar), probs, gt_labels = self.nets["policy"](qpos, images, env_state, actions, is_pad)
         loss_dict = dict()
+        if self.use_vq:
+            total_kld = [torch.tensor(0.0)]
+        else:
+            total_kld, dim_wise_kld, mean_kld = self.kl_divergence(mu, logvar)
+        loss_dict['kl'] = total_kld[0]
+
         all_l1 = F.l1_loss(actions, a_hat, reduction='none')
         l1 = (all_l1 * ~is_pad.unsqueeze(-1)).mean()
         loss_dict['l1'] = l1
-        loss_dict['kl'] = total_kld[0]
-
 
         predictions = OrderedDict(
             actions=actions,
             kl_loss=loss_dict['kl'],
             reconstruction_loss=loss_dict['l1'],
         )
+        if self.use_vq:
+            predictions["probs"] = probs
+            predictions["gt_labels"] = gt_labels.detach()
 
         return predictions
 
@@ -206,12 +233,22 @@ class ACT(BC_VAE):
         # total loss is sum of reconstruction and KL, weighted by beta
         kl_loss = predictions["kl_loss"]
         recons_loss = predictions["reconstruction_loss"]
+        if self.use_vq:
+            probs = predictions["probs"]
+            gt_labels = predictions["gt_labels"]
+            vq_discrepancy = self.compute_vq_loss(probs, gt_labels)
+            recons_loss = recons_loss + vq_discrepancy * self.vq_weight
+
         action_loss = recons_loss + self.kl_weight * kl_loss
         return OrderedDict(
             recons_loss=recons_loss,
             kl_loss=kl_loss,
             action_loss=action_loss,
         )
+
+    def compute_vq_loss(self, probs, gt_labels):
+        # F.l1_loss(probs, gt_labels, reduction='mean')
+        return F.cross_entropy(probs, gt_labels)
 
     def log_info(self, info):
         """

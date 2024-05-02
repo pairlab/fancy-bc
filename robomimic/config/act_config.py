@@ -45,3 +45,7 @@ class ACTConfig(BaseConfig):
         self.algo.act.nheads = 8                                    # dropout probability for attention outputs for each transformer block
         self.algo.act.latent_dim = 32                               # latent dim of VAE
         self.algo.act.kl_weight = 20                                # KL weight of VAE
+        self.algo.act.vq = False                                    # whether to use vector quantization
+        self.algo.act.vq_dim = 64                                   # dimension of vector quantization
+        self.algo.act.vq_class = 512                                # class of vector quantization
+        self.algo.act.vq_weight = 0.25                              # class of vector quantization
