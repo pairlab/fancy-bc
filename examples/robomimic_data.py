@@ -97,7 +97,7 @@ def convert_articulate_to_robosuite(dataset_path, next_obs=False, config_path=No
                 obs_data = demo_group["obs"][obs_key]
                 next_obs_group.create_dataset(obs_key, data=obs_data[1:])
 
-def add_task_id(dataset_paths, task_names, task_set):
+def add_task_id(dataset_paths, task_names, task_set='bidex'):
     for dataset_path, task_name in zip(dataset_paths, task_names):
         task_id = TASK_SETS[task_set].index(task_name)
         with h5py.File(dataset_path, "a") as data:
@@ -122,7 +122,15 @@ def main(args):
         # check if wildcard in datasetpath, and if so, evaluate and pass in a list of datasets
         merge_hdf5_files(dataset_paths, args.target_path)
     if args.add_task_id:
-        add_task_id(dataset_paths, args.task_set)
+        task_names = []
+        for p in dataset_paths:
+            if "scissors" in p:
+                task_names.append("scissors")
+            elif "switch" in p:
+                task_names.append("switch")
+            elif "bottle" in p:
+                task_names.append("bottle")
+        add_task_id(dataset_paths, task_names)
     if args.convert:
         convert_articulate_to_robosuite(args.dataset_path, args.next_obs, args.config_path)
 
