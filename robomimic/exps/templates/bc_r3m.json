@@ -37,8 +37,16 @@
         }
     },
     "train": {
-        "data": [{"path" : "/home/krishnans/ngc/DexterousHands/bidexhands/logs/ShadowHandSwitch/ppo/ppo_seed-1/rollouts_100.hdf5"}],
-        "load_env_meta": false,
+        "data": [{
+                "path": "/home/krishnans/lustre/datasets/bidex_scissors/rollouts_1000.hdf5",
+		"weight": 0.5
+            }, 
+	    {
+                "path": "/home/krishnans/lustre/datasets/bidex_switch/rollouts_1000.hdf5",
+		"weight": 0.5
+            }
+	],
+	"load_env_meta": false,
         "output_dir": "../bc_rnn_trained_models",
         "num_data_workers": 4,
         "hdf5_cache_mode": "low_dim",

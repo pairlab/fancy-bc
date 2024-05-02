@@ -55,7 +55,7 @@
             "actions"
         ],
         "action_keys": ["actions"],
-        "action_config": {"actions": {"type": "continuous", "dim": 22}},
+        "action_config": {"actions": {"type": "continuous", "dim": 22, "normalization": "min_max"}},
         "goal_mode": null,
         "cuda": true,
         "batch_size": 256,
@@ -112,9 +112,29 @@
     },
     "observation": {
         "modalities": {
-            "obs": {
-                "low_dim": ["actions", "goal_dof_pos_scaled", "goal_pos", "goal_quat", "hand_joint_pos", "hand_palm_pos", "hand_palm_quat", "object_dof_pos_scaled", "object_pos", "object_quat", "object_type", "object_type_one_hot"],
-                "rgb": ["hand_camera"],
+            "obs": { 
+	        "low_dim": [
+                    "left_fingertip_force", 
+                    "left_fingertip_state",
+                    "left_hand_action",
+                    "left_hand_dof_force",
+                    "left_hand_dof_pos",
+                    "left_hand_dof_vel",
+                    "left_hand_euler",
+                    "left_hand_pos",
+                    "object_angvel",
+                    "object_linvel",
+                    "object_pose",
+                    "right_fingertip_force",
+                    "right_fingertip_state",
+                    "right_hand_action",
+                    "right_hand_dof_force",
+                    "right_hand_dof_pos",
+                    "right_hand_dof_vel",
+                    "right_hand_euler",
+                    "right_hand_pos"
+                ],
+                "rgb": ["fixed_camera"],
                 "depth": [],
                 "scan": []
             },
