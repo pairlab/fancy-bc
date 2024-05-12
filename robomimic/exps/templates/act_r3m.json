@@ -147,6 +147,7 @@
                 "obs_randomizer_class": null,
                 "obs_randomizer_kwargs": {}
             },
+            "rgb": {
                 "core_class": "VisualCore",
                 "core_kwargs": {             
                     "backbone_class": "R3MConv",
