@@ -1,0 +1,32 @@
+defaults:
+  - override hydra/launcher: joblib
+
+# task and env
+env:
+  env_name: myoHandPoseRandom-v0
+
+# num_envs
+num_envs: 16384
+
+# agent
+agent:
+  rollouts: 16
+  learning_epochs: 8 
+  mini_batches: 2
+  discount_factor: 0.99
+  lambda: 0.95
+  learning_rate: 1e-3
+  grad_norm_clip: 0.5
+  ratio_clip: 0.2
+  value_clip: 0.2
+
+# model
+model:
+  actor_hidden_dim: 256
+  actor_activation_fn: 
+    _target_: torch.nn.ReLU
+
+# memory
+memory:
+  memory_size: ${agent.rollouts}
+  batch_size: 64
