@@ -59,10 +59,10 @@
         "frame_stack": 1,
         "pad_frame_stack": true,
         "dataset_keys": [
-            "actions"
+            "action"
         ],
-        "action_keys": ["actions"],
-        "action_config": {"actions": {"type": "continuous", "dim": 23, "normalization": "min_max"}},
+        "action_keys": ["action"],
+        "action_config": {"action": {"type": "continuous", "dim": 23, "normalization": "min_max"}},
         "goal_mode": null,
         "cuda": true,
         "batch_size": 100,
