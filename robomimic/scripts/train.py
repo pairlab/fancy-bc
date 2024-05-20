@@ -431,7 +431,8 @@ def main(args):
         config = config_factory(args.algo)
 
     if args.dataset is not None:
-        config.train.data = [{"path": args.dataset}]
+        dataset_paths = args.dataset.split(',')
+        config.train.data = [{"path": path} for path in dataset_paths]
 
     if args.name is not None:
         config.experiment.name = args.name
