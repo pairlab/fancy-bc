@@ -122,8 +122,10 @@
         },
         "encoder": {
             "low_dim": {
-                "core_class": null,
-                "core_kwargs": {},
+                "core_class": "ZeroPadEncoder",
+                "core_kwargs": {
+                    "padding": 0
+                },
                 "obs_randomizer_class": null,
                 "obs_randomizer_kwargs": {}
             },

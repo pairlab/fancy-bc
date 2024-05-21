@@ -54,6 +54,46 @@ class EncoderCore(BaseNets.Module):
 
 """
 ================================================
+Zero-Pad Encoder Networks
+================================================
+"""
+
+import torch.nn.functional as F
+
+class ZeroPadEncoder(EncoderCore):
+    def __init__(self, input_shape, padding=0):
+        super(ZeroPadEncoder, self).__init__(input_shape)
+        self.padding = padding
+
+    def forward(self, x):
+        """
+        Forward pass that zero-pads the input to match the specified input_shape.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape [B, C, H, W]
+
+        Returns:
+            torch.Tensor: Zero-padded tensor of shape [B, C, H, W] matching self.input_shape
+        """
+        # Get the current shape of the input tensor
+        current_shape = x.shape[1:]  # Ignore the batch dimension
+
+        # Calculate the padding needed for each dimension
+        padding = []
+        for i in range(len(current_shape)):
+            pad_size = max(0, self.input_shape[i] - current_shape[i])
+            padding.append((pad_size // 2, pad_size - pad_size // 2))
+
+        # Flatten the padding list and reverse it for F.pad
+        padding = [p for pair in reversed(padding) for p in pair]
+
+        # Apply padding
+        x_padded = F.pad(x, padding, "constant", self.padding)
+        return x_padded
+
+
+"""
+================================================
 One Hot Encoder Networks
 ================================================
 """
