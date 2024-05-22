@@ -75,7 +75,6 @@ def convert_camera_obs_hwc(source_file, target_file):
                         demo_group.copy(f"{key}", target_demo_group, key)
                         # target_demo_group.create_dataset(key, data=demo_group[key])
 
-
 def convert_articulate_to_robosuite(dataset_path, next_obs=False, config_path=None):
     config = {}
     if config_path is not None:
@@ -96,6 +95,22 @@ def convert_articulate_to_robosuite(dataset_path, next_obs=False, config_path=No
             for obs_key in demo_group["obs"].keys():
                 obs_data = demo_group["obs"][obs_key]
                 next_obs_group.create_dataset(obs_key, data=obs_data[1:])
+
+
+def add_mask(dataset_paths):
+    for dataset_path in dataset_paths:
+        with h5py.File(dataset_path, "a") as data:
+            success_demos = []
+            for ep in data["data"].keys():
+                if data[f"data/{ep}"].attrs['num_samples'] > 0:
+                    success_demos.append(ep.encode('utf-8'))  # HDF5 requires bytes for strings
+
+            if "traj_success" not in data["mask"].keys():
+                data.create_group("mask")
+                data["mask"].create_dataset("traj_success", data=np.array(success_demos, dtype=str))
+            else:
+                print(f"skipping mask for {dataset_path}, traj_success already exists")
+
 
 def add_task_id(dataset_paths, task_names, task_set='bidex'):
     for dataset_path, task_name in zip(dataset_paths, task_names):
