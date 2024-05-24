@@ -6,8 +6,8 @@
         "logging": {
             "terminal_output_to_txt": true,
             "log_tb": true,
-            "log_wandb": false,
-            "wandb_proj_name": "debug"
+            "log_wandb": true,
+            "wandb_proj_name": "robomimic"
         },
         "mse":{},
         "save": {
@@ -48,8 +48,8 @@
 	],
         "load_env_meta": false,
         "output_dir":"../act_myo_trained_models",
-        "num_data_workers": 0,
-        "hdf5_cache_mode": "all",
+        "num_data_workers": 32,
+        "hdf5_cache_mode": "low_dim",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
         "hdf5_normalize_obs": false,
@@ -65,7 +65,7 @@
         "action_config": {"action": {"type": "continuous", "dim": 23, "normalization": "min_max"}},
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 100,
+        "batch_size": 128,
         "num_epochs": 10000,
         "seed": 1
     },
