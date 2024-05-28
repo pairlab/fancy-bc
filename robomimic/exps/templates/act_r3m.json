@@ -6,8 +6,8 @@
         "logging": {
             "terminal_output_to_txt": true,
             "log_tb": true,
-            "log_wandb": false,
-            "wandb_proj_name": "debug"
+            "log_wandb": true,
+            "wandb_proj_name": "robomimic"
         },
         "mse":{},
         "save": {
@@ -47,8 +47,8 @@
             }
 	],
         "load_env_meta": false,
-        "output_dir":"../act_trained_models",
-        "num_data_workers": 4,
+        "output_dir":"/home/krishnans/robomimic/act_trained_models",
+        "num_data_workers": 32,
         "hdf5_cache_mode": "low_dim",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
@@ -62,10 +62,10 @@
             "actions"
         ],
         "action_keys": ["actions"],
-        "action_config": {"actions": {"type": "continuous", "dim": 52, "normalization": "min_max"}},
+        "action_config": {"actions": {"type": "continuous", "dim": 52, "normalization": "gaussian"}},
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 100,
+        "batch_size": 128,
         "num_epochs": 10000,
         "seed": 1
     },
@@ -147,6 +147,7 @@
                 "obs_randomizer_class": null,
                 "obs_randomizer_kwargs": {}
             },
+	    "rgb": {
                 "core_class": "VisualCore",
                 "core_kwargs": {             
                     "backbone_class": "R3MConv",
