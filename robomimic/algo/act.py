@@ -48,6 +48,7 @@ class ACT(BC_VAE):
         self.camera_keys = self.obs_config['modalities']['obs']['rgb'].copy()
         self.proprio_keys = self.obs_config['modalities']['obs']['low_dim'].copy()
         self.obs_keys = self.proprio_keys + self.camera_keys
+        self.action_key = self.global_config.train.action_keys[0]
 
         self.proprio_dim = 0
         self.use_vq = self.algo_config.act.vq
@@ -73,7 +74,7 @@ class ACT(BC_VAE):
                          'task_name': self.global_config.experiment.name,
                          'seed': self.global_config.train.seed,
                          'num_steps': self.global_config.train.num_epochs,
-                         'action_dim': self.global_config.train.action_config['actions']['dim']
+                         'action_dim': self.global_config.train.action_config[self.action_key]['dim']
                          }
 
         self.vq_weight = self.algo_config.act.vq_weight
@@ -105,7 +106,7 @@ class ACT(BC_VAE):
         input_batch["obs"] = {k: batch["obs"][k][:, 0, :] for k in batch["obs"] if k != 'pad_mask'}
         input_batch["obs"]['pad_mask'] = batch["obs"]['pad_mask']
         input_batch["goal_obs"] = batch.get("goal_obs", None) # goals may not be present
-        input_batch["actions"] = batch["actions"][:, :, :]
+        input_batch[self.action_key] = batch[self.action_key][:, :, :]
         # we move to device first before float conversion because image observation modalities will be uint8 -
         # this minimizes the amount of data transferred to GPU
         return TensorUtils.to_float(TensorUtils.to_device(input_batch, self.device))
@@ -151,7 +152,7 @@ class ACT(BC_VAE):
 
         env_state = torch.zeros([qpos.shape[0], 10]).cuda()  # this is not used
 
-        actions = batch['actions']
+        actions = batch[self.action_key]
         is_pad = batch['obs']['pad_mask'] == 0  # from 1.0 or 0 to False and True
         is_pad = is_pad.squeeze(dim=-1)
 

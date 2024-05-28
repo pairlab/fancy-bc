@@ -6,8 +6,8 @@
         "logging": {
             "terminal_output_to_txt": true,
             "log_tb": true,
-            "log_wandb": true,
-            "wandb_proj_name": "robomimic"
+            "log_wandb": false,
+            "wandb_proj_name": "debug"
         },
         "mse":{},
         "save": {
@@ -38,18 +38,18 @@
     },
     "train": {
         "data": [{
-                "path": "/home/krishnans/lustre/datasets/bidex_scissors/rollouts_1000.hdf5",
+                "path": "/juno/u/ksrini/multi_task_experts/collect_myosuite/multirun/2024-05-18/00-13-33/4/myoHandObjHoldFixed-v0_100.hdf5",
 		"weight": 0.5
             }, 
 	    {
-                "path": "/home/krishnans/lustre/datasets/bidex_switch/rollouts_1000.hdf5",
+                "path": "/juno/u/ksrini/multi_task_experts/collect_myosuite/multirun/2024-05-18/00-13-33/5/myoHandReachFixed-v0_100.hdf5",
 		"weight": 0.5
             }
 	],
         "load_env_meta": false,
-        "output_dir":"/home/krishnans/robomimic/act_trained_models",
-        "num_data_workers": 32,
-        "hdf5_cache_mode": "low_dim",
+        "output_dir":"../act_myo_trained_models",
+        "num_data_workers": 0,
+        "hdf5_cache_mode": "all",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
         "hdf5_normalize_obs": false,
@@ -59,13 +59,13 @@
         "frame_stack": 1,
         "pad_frame_stack": true,
         "dataset_keys": [
-            "actions"
+            "action"
         ],
-        "action_keys": ["actions"],
-        "action_config": {"actions": {"type": "continuous", "dim": 52, "normalization": "gaussian"}},
+        "action_keys": ["action"],
+        "action_config": {"action": {"type": "continuous", "dim": 23, "normalization": "min_max"}},
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 128,
+        "batch_size": 100,
         "num_epochs": 10000,
         "seed": 1
     },
@@ -108,27 +108,7 @@
     "observation": {
         "modalities": {
             "obs": {
-                "low_dim": [
-                    "left_fingertip_force", 
-                    "left_fingertip_state",
-                    "left_hand_action",
-                    "left_hand_dof_force",
-                    "left_hand_dof_pos",
-                    "left_hand_dof_vel",
-                    "left_hand_euler",
-                    "left_hand_pos",
-                    "object_angvel",
-                    "object_linvel",
-                    "object_pose",
-                    "right_fingertip_force",
-                    "right_fingertip_state",
-                    "right_hand_action",
-                    "right_hand_dof_force",
-                    "right_hand_dof_pos",
-                    "right_hand_dof_vel",
-                    "right_hand_euler",
-                    "right_hand_pos"
-                ],
+                "low_dim": ["vec_obs"],
                 "rgb": ["fixed_camera"],
                 "depth": [],
                 "scan": []
@@ -149,11 +129,12 @@
             },
             "rgb": {
                 "core_class": "VisualCore",
-                "core_kwargs": {             
-                    "backbone_class": "R3MConv",
+                "core_kwargs": {
+                    "feature_dimension": 64,
+                    "backbone_class": "ResNet18Conv",
                     "backbone_kwargs": {
-                        "mvp_model_class": "resnet18",
-                        "freeze": true
+                        "pretrained": false,
+                        "input_coord_conv": false
                     },
                     "pool_class": "SpatialSoftmax",
                     "pool_kwargs": {
