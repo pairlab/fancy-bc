@@ -1075,6 +1075,42 @@ class MetaDataset(torch.utils.data.Dataset):
                 action_stats, self.datasets[0].action_config)
         return self.action_normalization_stats
 
+class PadMetaDataset(MetaDataset):
+    def __init__(
+        self,
+        datasets,
+        ds_weights,
+        normalize_weights_by_ds_size=False,
+        pad_to_shape=None,
+    ):
+        super(PadMetaDataset, self).__init__(
+            datasets,
+            ds_weights,
+            normalize_weights_by_ds_size=normalize_weights_by_ds_size,
+        )
+        self.pad_to_shape = pad_to_shape
+
+    def __getitem__(self, index):
+        """
+        Fetch dataset sequence @index (inferred through internal index map), using the getitem_cache if available.
+        """
+        meta = super().__getitem__(index)
+        if self.pad_to_shape is None:
+            return meta
+        for otype in ["obs"]:
+            if otype not in meta:
+                continue
+            x = meta[otype]
+            for k in x:
+                if k not in self.pad_to_shape:
+                    continue
+                current_shape = x[k].shape[1:]
+                pad_to_shape = self.pad_to_shape[k]
+                pad_width = [(0, 0)] + [(0, max(dim - current_dim, 0)) for dim, current_dim in zip(pad_to_shape, current_shape)]
+                x[k] = np.pad(x[k], pad_width=pad_width, mode="constant")
+
+        return meta
+
 def _compute_traj_stats(traj_obs_dict):
     """
     Helper function to compute statistics over a single trajectory of observations.

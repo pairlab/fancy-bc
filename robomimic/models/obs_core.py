@@ -52,6 +52,7 @@ class EncoderCore(BaseNets.Module):
         """
         ObsUtils.register_encoder_core(cls)
 
+
 """
 ================================================
 One Hot Encoder Networks
