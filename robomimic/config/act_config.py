@@ -23,6 +23,9 @@ class ACTConfig(BaseConfig):
         training and test-time behavior should be populated here.
         """
 
+        self.train.meta_ds_class = "MetaDataset"
+        self.train.meta_ds_kwargs = {}
+
         # optimization parameters
         self.algo.optim_params.policy.optimizer_type = "adamw"
         self.algo.optim_params.policy.learning_rate.initial = 5e-5      # policy learning rate
