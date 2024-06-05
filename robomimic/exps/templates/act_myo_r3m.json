@@ -1,0 +1,153 @@
+{
+    "algo_name": "act",
+    "experiment": {
+        "name": "test",
+        "validate": false,
+        "logging": {
+            "terminal_output_to_txt": true,
+            "log_tb": true,
+            "log_wandb": true,
+            "wandb_proj_name": "robomimic"
+        },
+        "mse":{},
+        "save": {
+            "enabled": true,
+            "every_n_seconds": null,
+            "every_n_epochs": 40,
+            "epochs": [],
+            "on_best_validation": false,
+            "on_best_rollout_return": false,
+            "on_best_rollout_success_rate": true
+        },
+        "epoch_every_n_steps": 500,
+        "validation_epoch_every_n_steps": 10,
+        "env": null,
+        "additional_envs": null,
+        "render": false,
+        "render_video": true,
+        "keep_all_videos": false,
+        "video_skip": 5,
+        "rollout": {
+            "enabled": false,
+            "n": 50,
+            "horizon": 400,
+            "rate": 40,
+            "warmstart": 0,
+            "terminate_on_success": true
+        }
+    },
+    "train": {
+        "data": [
+            { "path": "/home/krishnans/multi_task_experts/collect_myosuite/outputs/2024-05-28/10-29-43/myo-reach-hard_150.hdf5", "weight": 0.34 }, 
+            { "path": "/home/krishnans/multi_task_experts/collect_myosuite/outputs/2024-05-28/10-30-46/myo-pen-twirl-hard_150.hdf5", "weight": 0.33 },
+            { "path": "/home/krishnans/multi_task_experts/collect_myosuite/outputs/2024-05-28/10-37-18/myo-obj-hold-hard_150.hdf5", "weight": 0.33 }
+        ],
+        "meta_ds_kwargs": {"pad_to_shape": {"vec_obs": [115]}},
+        "meta_ds_class": "PadMetaDataset",
+        "load_env_meta": false,
+        "output_dir":"../act_myo_trained_models",
+        "num_data_workers": 32,
+        "hdf5_cache_mode": "low_dim",
+        "hdf5_use_swmr": true,
+        "hdf5_load_next_obs": false,
+        "hdf5_normalize_obs": false,
+        "hdf5_filter_key": null,
+        "seq_length": 10,
+        "pad_seq_length": true,
+        "frame_stack": 1,
+        "pad_frame_stack": true,
+        "dataset_keys": [
+            "action"
+        ],
+        "action_keys": ["action"],
+        "action_config": {"action": {"type": "continuous", "dim": 39, "normalization": "gaussian"}},
+        "goal_mode": null,
+        "cuda": true,
+        "batch_size": 128,
+        "num_epochs": 10000,
+        "seed": 1
+    },
+    "algo": {
+        "optim_params": {
+            "policy": {
+                "optimizer_type": "adamw",
+                "learning_rate": {
+                    "initial": 0.00005,
+                    "decay_factor": 1,
+                    "epoch_schedule": [
+                        100
+                    ],
+                    "scheduler_type": "linear"
+                },
+                "regularization": {
+                    "L2": 0.0001
+                }
+            }
+        },
+        "loss": {
+            "l2_weight": 0.0,
+            "l1_weight": 1.0,
+            "cos_weight": 0.0
+        },
+        "act": {
+            "hidden_dim": 512,
+            "dim_feedforward": 3200,
+            "backbone": "r3m_18",
+            "enc_layers": 4,
+            "dec_layers": 7,
+            "nheads": 8,
+            "latent_dim": 32,
+            "kl_weight": 10,
+            "vq": true,
+            "vq_dim": 64,
+            "vq_class": 512
+        }
+    },
+    "observation": {
+        "modalities": {
+            "obs": {
+                "low_dim": ["vec_obs"],
+                "rgb": ["fixed_camera"],
+                "depth": [],
+                "scan": []
+            },
+            "goal": {
+                "low_dim": [],
+                "rgb": [],
+                "depth": [],
+                "scan": []
+            }
+        },
+        "encoder": {
+            "low_dim": {
+                "core_class": null,
+                "core_kwargs": {},
+                "obs_randomizer_class": null,
+                "obs_randomizer_kwargs": {}
+            },
+            "rgb": {
+                "core_class": null,
+                "core_kwargs": {},
+                "obs_randomizer_class": "CropRandomizer",
+                "obs_randomizer_kwargs": {
+                    "crop_height": 200,
+                    "crop_width": 200,
+                    "num_crops": 1,
+                    "pos_enc": false
+                }
+            },
+            "depth": {
+                "core_class": "VisualCore",
+                "core_kwargs": {},
+                "obs_randomizer_class": null,
+                "obs_randomizer_kwargs": {}
+            },
+            "scan": {
+                "core_class": "ScanCore",
+                "core_kwargs": {},
+                "obs_randomizer_class": null,
+                "obs_randomizer_kwargs": {}
+            }
+        }
+    }
+}
