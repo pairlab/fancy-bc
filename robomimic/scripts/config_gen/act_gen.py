@@ -1,17 +1,38 @@
+import os
+
 from robomimic.scripts.config_gen.helper import *
+from pathlib import Path
+
+
+MYO_TASK_SET = {
+    "myo10": [
+        "myo-key-turn",
+        "myo-key-turn-hard",
+        "myo-obj-hold",
+        "myo-obj-hold-hard",
+        "myo-pen-twirl",
+        "myo-pen-twirl-hard",
+        "myo-pose",
+        "myo-pose-hard",
+        "myo-reach",
+        "myo-reach-hard",
+    ],
+    "myo5-easy": ["myo-key-turn", "myo-obj-hold", "myo-pen-twirl", "myo-pose", "myo-reach"],
+    "myo5-hard": ["myo-key-turn-hard", "myo-obj-hold-hard", "myo-pen-twirl-hard", "myo-pose-hard", "myo-reach-hard"],
+}
+
 
 def make_generator_helper(args):
     algo_name_short = "act"
     generator = get_generator(
         algo_name="act",
-        config_file=os.path.join(base_path, 'robomimic/exps/templates/act.json'),
+        config_file=os.path.join(base_path, "robomimic/exps/templates/act_myo_r3m.json"),
         args=args,
         algo_name_short=algo_name_short,
         pt=True,
     )
     if args.ckpt_mode is None:
         args.ckpt_mode = "off"
-
 
     generator.add_param(
         key="train.num_epochs",
@@ -34,7 +55,36 @@ def make_generator_helper(args):
         values=[100.0],
     )
 
-    if args.env == "r2d2":
+    if args.env.startswith("myo"):
+        datasets_path = os.environ["MYO_DATASET_PATH"]
+        task_set = MYO_TASK_SET[args.env]
+        if args.mod == "im":
+            values = ["all"]
+        else:
+            values = ["low_dim"]
+        generator.add_param(key="train.hdf5_cache_mode", name="", group=-1, values=values)
+        generator.add_param(
+            key="train.data",
+            name="ds",
+            group=2,
+            values=[
+                [
+                    {"path": str(p)}
+                    for p in list(Path(datasets_path/task_set).rglob("*.hdf5"))
+                ],
+            ],
+            value_names=["myo"],
+        )
+        generator.add_param(
+            key="train.action_keys",
+            name="ac_keys",
+            group=-1,
+            values=[["action"]],
+            value_names=[
+                "ac",
+            ],
+        )
+    elif args.env == "r2d2":
         generator.add_param(
             key="train.data",
             name="ds",
@@ -70,7 +120,7 @@ def make_generator_helper(args):
             group=2,
             values=[
                 [
-                    {"path": "TODO.hdf5"}, # replace with your own path
+                    {"path": "TODO.hdf5"},  # replace with your own path
                 ],
             ],
             value_names=[
@@ -83,11 +133,9 @@ def make_generator_helper(args):
             key="experiment.env_meta_update_dict",
             name="",
             group=-1,
-            values=[
-                {"env_kwargs": {"controller_configs": {"control_delta": False}}}
-            ],
+            values=[{"env_kwargs": {"controller_configs": {"control_delta": False}}}],
         )
-        
+
         generator.add_param(
             key="train.action_keys",
             name="ac_keys",
@@ -105,16 +153,15 @@ def make_generator_helper(args):
             ],
         )
 
-
     else:
         raise ValueError
-    
+
     generator.add_param(
         key="train.output_dir",
         name="",
         group=-1,
         values=[
-            "~/expdata/{env}/{mod}/{algo_name_short}".format(
+            "../{env}/{algo_name_short}".format(
                 env=args.env,
                 mod=args.mod,
                 algo_name_short=algo_name_short,
@@ -123,6 +170,7 @@ def make_generator_helper(args):
     )
 
     return generator
+
 
 if __name__ == "__main__":
     parser = get_argparser()
