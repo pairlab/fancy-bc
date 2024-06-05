@@ -79,6 +79,8 @@ class ACT(BC_VAE):
 
         self.vq_weight = self.algo_config.act.vq_weight
         self.kl_weight = self.algo_config.act.kl_weight
+        self.vq_l1_weight = self.algo_config.act.vq_l1_weight
+        self.vq_ce_weight = self.algo_config.act.vq_ce_weight
         model, optimizer = build_ACT_model_and_optimizer(policy_config)
         self.nets["policy"] = model
         self.nets = self.nets.float().to(self.device)
@@ -242,16 +244,24 @@ class ACT(BC_VAE):
         if self.use_vq:
             probs = predictions["probs"]
             gt_labels = predictions["gt_labels"]
-            vq_discrepancy = self.compute_vq_loss(probs, gt_labels)
+            vq_l1, vq_ce = self.compute_vq_loss(probs, gt_labels) 
+            vq_discrepancy = vq_l1 * self.vq_l1_weight + vq_ce * self.vq_ce_weight
             action_loss = action_loss + vq_discrepancy * self.vq_weight
-        losses["action_loss"] = action_loss
-        if self.use_vq:
             losses["vq_discrepancy"] = vq_discrepancy
+        losses["action_loss"] = action_loss
         return losses
 
     def compute_vq_loss(self, probs, gt_labels):
         # F.l1_loss(probs, gt_labels, reduction='mean')
-        return F.cross_entropy(probs, gt_labels)
+        if self.vq_l1_weight > 0:
+            l1_loss = F.l1_loss(probs, gt_labels, reduction='mean')
+        else:
+            l1_loss = 0
+        if self.vq_ce_weight > 0:
+            ce_loss = F.cross_entropy(probs, gt_labels)
+        else:
+            ce_loss = 0
+        return l1_loss, ce_loss
 
     def log_info(self, info):
         """
@@ -266,6 +276,8 @@ class ACT(BC_VAE):
         log["Loss"] = info["losses"]["action_loss"].item()
         log["KL_Loss"] = info["losses"]["kl_loss"].item()
         log["Reconstruction_Loss"] = info["losses"]["recons_loss"].item()
+        if self.use_vq:
+            log["VQ_Loss"] = info["losses"]["vq_discrepancy"].item()
         if "policy_grad_norms" in info:
             log["Policy_Grad_Norms"] = info["policy_grad_norms"]
         return log

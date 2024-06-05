@@ -6,7 +6,7 @@
         "logging": {
             "terminal_output_to_txt": true,
             "log_tb": true,
-            "log_wandb": true,
+            "log_wandb": false,
             "wandb_proj_name": "robomimic"
         },
         "mse":{},
@@ -87,12 +87,15 @@
         "loss": {
             "l2_weight": 0.0,
             "l1_weight": 1.0,
-            "cos_weight": 0.0
+            "cos_weight": 0.0,
+            "vq_weight": 1.0,
+            "vq_l1_weight": 1.0,
+            "vq_ce_weight": 0.0
         },
         "act": {
             "hidden_dim": 512,
             "dim_feedforward": 3200,
-            "backbone": "r3m_18",
+            "backbone": "r3m_resnet18",
             "enc_layers": 4,
             "dec_layers": 7,
             "nheads": 8,

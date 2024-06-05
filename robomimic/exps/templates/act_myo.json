@@ -87,6 +87,8 @@
         "loss": {
             "l2_weight": 0.0,
             "l1_weight": 1.0,
+            "vq_l1_weight": 1.0,
+            "vq_ce_weight": 0.0,
             "cos_weight": 0.0
         },
         "act": {
