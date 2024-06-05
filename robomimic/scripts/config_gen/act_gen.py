@@ -67,6 +67,7 @@ def make_generator_helper(args):
         else:
             values = ["low_dim"]
         generator.add_param(key="train.hdf5_cache_mode", name="", group=-1, values=values)
+        generator.add_param(key="train.hdf5_filter_key", name="", group=-1, values=[args.nr])
         generator.add_param(
             key="train.data",
             name="ds",

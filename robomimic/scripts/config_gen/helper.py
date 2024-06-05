@@ -931,6 +931,7 @@ def get_argparser():
     parser.add_argument(
         "--nr",
         type=int,
+        help="num rollouts/demos",
         default=-1
     )
 
