@@ -70,7 +70,7 @@ def make_generator_helper(args):
             values=[
                 [
                     {"path": str(p)}
-                    for p in list(Path(datasets_path/task_set).rglob("*.hdf5"))
+                    for p in list((Path(datasets_path) / task_set).rglob("*.hdf5"))
                 ],
             ],
             value_names=["myo"],
