@@ -75,6 +75,13 @@ def make_generator_helper(args):
             ],
             value_names=["myo"],
         )
+        if args.goal_mode is not None:
+            generator.add_param(
+                key="train.goal_mode",
+                name="",
+                group=-1,
+                values=args.goal_mode,
+            )
         generator.add_param(
             key="train.action_keys",
             name="ac_keys",
@@ -174,6 +181,7 @@ def make_generator_helper(args):
 
 if __name__ == "__main__":
     parser = get_argparser()
+    parser.add_argument("--goal_mode", nargs="+", choices=["last", "first", "random"])
 
     args = parser.parse_args()
     make_generator(args, make_generator_helper)
