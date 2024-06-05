@@ -21,6 +21,10 @@ MYO_TASK_SET = {
     "myo5-hard": ["myo-key-turn-hard", "myo-obj-hold-hard", "myo-pen-twirl-hard", "myo-pose-hard", "myo-reach-hard"],
 }
 
+BIDEX_TASK_SET = {
+    "switch": "/home/krishnans/lustre/datasets/bidex_switch/rollouts_1000.hdf5",
+    "scissors": "/home/krishnans/lustre/datasets/bidex_scissors/rollouts_1000.hdf5",
+}
 
 def make_generator_helper(args):
     algo_name_short = "act"
@@ -70,7 +74,7 @@ def make_generator_helper(args):
             values=[
                 [
                     {"path": str(p)}
-                    for p in list((Path(datasets_path) / task_set).rglob("*.hdf5"))
+                    for p in list((Path(datasets_path) / args.env).rglob("*.hdf5"))
                 ],
             ],
             value_names=["myo"],

@@ -627,6 +627,60 @@ def set_env_settings(generator, args):
             group=-1,
             values=[700],
         )
+    elif args.env.startswith("myo"):
+        if args.mod == 'im':
+            generator.add_param(
+                key="observation.modalities.obs.low_dim",
+                name="",
+                group=-1,
+                values=[
+                    ["vec_obs"]
+                ],
+            )
+            generator.add_param(
+                key="observation.modalities.obs.rgb",
+                name="",
+                group=-1,
+                values=[
+                    ["fixed_camera"]
+                ],
+            )
+        else:
+            generator.add_param(
+                key="observation.modalities.obs.low_dim",
+                name="",
+                group=-1,
+                values=[
+                    ["vec_obs"]
+                ],
+            )
+    elif args.env.startswith("bidex"):
+        if args.mod == 'im':
+            generator.add_param(
+                key="observation.modalities.obs.low_dim",
+                name="",
+                group=-1,
+                values=[
+                    ["actions", "goal_dof_pos_scaled", "goal_pos", "goal_quat", "hand_joint_pos", "hand_palm_pos", "hand_palm_quat", "object_dof_pos_scaled", "object_pos", "object_quat", "object_type", "object_type_one_hot"]
+                ],
+            )
+            generator.add_param(
+                key="observation.modalities.obs.rgb",
+                name="",
+                group=-1,
+                values=[
+                    ["hand_camera"]
+                ],
+            )
+        else:
+            generator.add_param(
+                key="observation.modalities.obs.low_dim",
+                name="",
+                group=-1,
+                values=[
+                    ["actions", "goal_dof_pos_scaled", "goal_pos", "goal_quat", "hand_joint_pos", "hand_palm_pos", "hand_palm_quat", "object_dof_pos_scaled", "object_pos", "object_quat", "object_type", "object_type_one_hot"]
+                ],
+            )
     else:
         raise ValueError
 
