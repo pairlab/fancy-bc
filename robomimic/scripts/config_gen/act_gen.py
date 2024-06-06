@@ -67,7 +67,8 @@ def make_generator_helper(args):
         else:
             values = ["low_dim"]
         generator.add_param(key="train.hdf5_cache_mode", name="", group=-1, values=values)
-        generator.add_param(key="train.hdf5_filter_key", name="", group=-1, values=[args.nr])
+        if args.demos is not None:
+            generator.add_param(key="train.hdf5_filter_key", name="demos", group=-1, values=[f"{demo}_demos" for demo in args.demos])
         generator.add_param(
             key="train.data",
             name="ds",
@@ -201,6 +202,7 @@ def make_generator_helper(args):
 if __name__ == "__main__":
     parser = get_argparser()
     parser.add_argument("--goal_mode", nargs="+", choices=["random"])
+    parser.add_argument("--demos", nargs="+", type=int)
 
     args = parser.parse_args()
     make_generator(args, make_generator_helper)
