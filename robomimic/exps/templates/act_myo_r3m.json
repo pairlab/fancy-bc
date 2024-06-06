@@ -86,7 +86,8 @@
             "cos_weight": 0.0,
             "vq_weight": 1.0,
             "vq_l1_weight": 1.0,
-            "vq_ce_weight": 0.0
+            "vq_ce_weight": 0.0,
+            "kl_weight": 10
         },
         "act": {
             "hidden_dim": 512,
@@ -96,7 +97,6 @@
             "dec_layers": 7,
             "nheads": 8,
             "latent_dim": 32,
-            "kl_weight": 10,
             "vq": true,
             "vq_dim": 64,
             "vq_class": 512

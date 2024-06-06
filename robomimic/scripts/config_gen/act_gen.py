@@ -87,6 +87,20 @@ def make_generator_helper(args):
                 group=-1,
                 values=args.goal_mode,
             )
+            if args.mod == "ld":
+                generator.add_param(
+                    key="observation.modalities.goal.low_dim",
+                    name="",
+                    group=-1,
+                    values=[["vec_obs"]],
+                )
+            else: 
+                generator.add_param(
+                    key="observation.modalities.goal.rgb",
+                    name="",
+                    group=-1,
+                    values=[["fixed_camera"]],
+                )
         generator.add_param(
             key="train.action_keys",
             name="ac_keys",
@@ -186,7 +200,7 @@ def make_generator_helper(args):
 
 if __name__ == "__main__":
     parser = get_argparser()
-    parser.add_argument("--goal_mode", nargs="+", choices=["last", "first", "random"])
+    parser.add_argument("--goal_mode", nargs="+", choices=["random"])
 
     args = parser.parse_args()
     make_generator(args, make_generator_helper)

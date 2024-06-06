@@ -77,10 +77,10 @@ class ACT(BC_VAE):
                          'action_dim': self.global_config.train.action_config[self.action_key]['dim']
                          }
 
-        self.vq_weight = self.algo_config.vq_weight
-        self.kl_weight = self.algo_config.act.kl_weight
-        self.vq_l1_weight = self.algo_config.vq_l1_weight
-        self.vq_ce_weight = self.algo_config.vq_ce_weight
+        self.kl_weight = self.algo_config.loss.kl_weight
+        self.vq_l1_weight = self.algo_config.loss.vq_l1_weight
+        self.vq_weight = self.algo_config.loss.vq_weight
+        self.vq_ce_weight = self.algo_config.loss.vq_ce_weight
         model, optimizer = build_ACT_model_and_optimizer(policy_config)
         self.nets["policy"] = model
         self.nets = self.nets.float().to(self.device)

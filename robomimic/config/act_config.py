@@ -41,6 +41,7 @@ class ACTConfig(BaseConfig):
         self.algo.loss.vq_ce_weight = 0.0      # L1 loss weight
         self.algo.loss.vq_weight = 1.0      # L1 loss weight
         self.algo.loss.cos_weight = 0.0     # cosine loss weight
+        self.algo.loss.kl_weight = 20       # KL weight of VAE
 
         # ACT policy settings
         self.algo.act.hidden_dim = 512                              # length of (s, a) seqeunces to feed to transformer - should usually match train.frame_stack
@@ -50,7 +51,6 @@ class ACTConfig(BaseConfig):
         self.algo.act.dec_layers = 7                                # dropout probability for embedding inputs in transformer
         self.algo.act.nheads = 8                                    # dropout probability for attention outputs for each transformer block
         self.algo.act.latent_dim = 32                               # latent dim of VAE
-        self.algo.act.kl_weight = 20                                # KL weight of VAE
         self.algo.act.vq = False                                    # whether to use vector quantization
         self.algo.act.vq_dim = 64                                   # dimension of vector quantization
         self.algo.act.vq_class = 512                                # class of vector quantization
