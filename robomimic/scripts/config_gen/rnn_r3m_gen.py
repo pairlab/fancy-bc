@@ -1,5 +1,6 @@
 import argparse
 import os
+import robomimic
 import robomimic.utils.hyperparam_utils as HyperparamUtils
 from pathlib import Path
 
@@ -9,11 +10,12 @@ def make_generator(args):
     Implement this function to setup your own hyperparameter scan!
     """
     script_file = args.script
+    rm_base = os.path.split(robomimic.__file__)[0]
 
     if args.use_r3m:
-        config_file = "robomimic/exps/templates/bc_r3m.json"
+        config_file = os.path.join(rm_base, "exps/templates/bc_r3m.json")
     else:
-        config_file = "robomimic/exps/templates/bc_articulate.json"
+        config_file = os.path.join(rm_base, "exps/templates/bc_articulate.json")
     generator = HyperparamUtils.ConfigGenerator(
         base_config_file=config_file, script_file=script_file,
         wandb_proj_name="multi_task_experts",
@@ -52,8 +54,8 @@ def make_generator(args):
         key="algo.gmm.enabled", 
         name="gmm", 
         group=2, 
-        values=[True, False], 
-        value_names=["t", "f"],
+        values=[True], 
+        value_names=["t"],
     )
 
     # RNN dim 400 + MLP dims (1024, 1024) vs. RNN dim 1000 + empty MLP dims ()
@@ -62,11 +64,8 @@ def make_generator(args):
         key="algo.actor_layer_dims", 
         name="mlp", 
         group=3, 
-        values=[
-            [1024, 1024], 
-            [],
-        ], 
-        value_names=["1024", "0"],
+        values=[[1024, 1024]], 
+        value_names=["1024"],
     )
 
     if args.use_r3m:
@@ -74,8 +73,8 @@ def make_generator(args):
             key="observation.encoder.rgb.core_kwargs.backbone_kwargs.freeze",
             name="freeze_r3m",
             group=4,
-            values=[True, False],
-            value_names=["t", "f"]
+            values=[True],
+            value_names=["t"]
         )
 
     # datasets 
@@ -104,7 +103,7 @@ def make_generator(args):
         generator.add_param(
             key="train.data",
             name="ds",
-            group=2,
+            group=5,
             values=[
                 [
                     {"path": str(p)}
@@ -113,6 +112,9 @@ def make_generator(args):
             ],
             value_names=["myo"],
         )
+
+    if args.demos is not None:
+        generator.add_param(key="train.hdf5_filter_key", name="demos", group=6, values=[f"{demo}_demos" for demo in args.demos])
     return generator
 
 
@@ -129,6 +131,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # Script name to generate - will override any defaults
+    parser.add_argument("--use_r3m", action="store_true", help="whether or not to use r3m backbone")
     parser.add_argument(
         "--script",
         type=str,
@@ -147,6 +150,7 @@ if __name__ == "__main__":
                  "myo10", "myo5-easy", "myo5-hard"],
         )
 
+    parser.add_argument("--demos", nargs="+", type=int)
 
     args = parser.parse_args()
     main(args)
