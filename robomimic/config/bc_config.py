@@ -23,6 +23,10 @@ class BCConfig(BaseConfig):
         training and test-time behavior should be populated here.
         """
 
+        # dataset config
+        self.train.meta_ds_class = "MetaDataset"
+        self.train.meta_ds_kwargs = {}
+
         # optimization parameters
         self.algo.optim_params.policy.optimizer_type = "adam"
         self.algo.optim_params.policy.learning_rate.initial = 1e-4      # policy learning rate

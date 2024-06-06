@@ -54,7 +54,7 @@ def make_generator(args):
         key="algo.gmm.enabled", 
         name="gmm", 
         group=2, 
-        values=[True], 
+        values=[False], 
         value_names=["t"],
     )
 
@@ -91,7 +91,14 @@ def make_generator(args):
             ],
             value_names=["scissors_switch_1k", "scissors_1k", "switch_1k"]
         )
-    elif args.env.startswith("myo"):
+    elif args.env.startswith("myo"): 
+        generator.add_param("train.meta_ds_kwargs", values=[{"pad_to_shape": {"vec_obs": [115]}}], group=-1, name="")
+        generator.add_param("train.meta_ds_class", values=["PadMetaDataset"], group=-1, name="")
+        generator.add_param(key="train.action_keys", values=[["action"]], group=-1, name="")
+        generator.add_param(key="train.dataset_keys", values=[["action"]], group=-1, name="")
+        generator.add_param(key="train.action_config", values=[{"action": {"type": "continuous", "dim": 39, "normalization": "gaussian"}},], group=-1, name="")
+        generator.add_param(key="observation.modalities.obs.rgb", values=[["fixed_camera"]], group=-1, name="")
+        generator.add_param(key="observation.modalities.obs.one_hot", values=[[]], group=-1, name="")
         generator.add_param(key="observation.modalities.obs.low_dim", values=[["vec_obs"]], group=-1, name="")
         generator.add_param(key="observation.modalities.obs.rgb", values=[["fixed_camera"]], group=-1, name="")
         datasets_path = os.environ["MYO_DATASET_PATH"]
@@ -99,6 +106,8 @@ def make_generator(args):
             values = ["all"]
         else:
             values = ["low_dim"]
+            generator.add_param(key="train.num_data_workers", values=[16], group=-1, name="")
+            generator.add_param(key="train.batch_size", values=[128], group=-1, name="")
         generator.add_param(key="train.hdf5_cache_mode", name="", group=-1, values=values)
         generator.add_param(
             key="train.data",

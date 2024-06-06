@@ -23,6 +23,7 @@ class ACTConfig(BaseConfig):
         training and test-time behavior should be populated here.
         """
 
+        # dataset config params
         self.train.meta_ds_class = "MetaDataset"
         self.train.meta_ds_kwargs = {}
 
