@@ -61,26 +61,28 @@ def make_generator_helper(args):
 
     if args.env.startswith("myo"):
         datasets_path = os.environ["MYO_DATASET_PATH"]
-        task_set = MYO_TASK_SET[args.env]
         if args.mod == "im":
-            values = ["all"]
+            cache_mode = ["all"]
         else:
-            values = ["low_dim"]
-        generator.add_param(key="train.hdf5_cache_mode", name="", group=-1, values=values)
-        if args.demos is not None:
-            generator.add_param(key="train.hdf5_filter_key", name="demos", group=-1, values=[f"{demo}_demos" for demo in args.demos])
+            cache_mode = ["low_dim"]
+        generator.add_param(key="train.hdf5_cache_mode", name="", group=-1, values=cache_mode)
+
         generator.add_param(
             key="train.data",
             name="ds",
-            group=2,
+            group=1,
             values=[
                 [
                     {"path": str(p)}
-                    for p in list((Path(datasets_path) / args.env).rglob("*.hdf5"))
-                ],
+                    for p in list(data_dir.rglob("*.hdf5"))
+                ] for data_dir in Path(datasets_path).iterdir()
             ],
-            value_names=["myo"],
+            value_names=[data_dir.name for data_dir in Path(datasets_path).iterdir()],
         )
+
+        if args.demos is not None:
+            generator.add_param(key="train.hdf5_filter_key", name="demos", group=2, values=[f"{demo}_demos" for demo in args.demos])
+
         if args.goal_mode is not None:
             generator.add_param(
                 key="train.goal_mode",
@@ -115,7 +117,7 @@ def make_generator_helper(args):
         generator.add_param(
             key="train.data",
             name="ds",
-            group=2,
+            group=1,
             values=[
                 [{"path": p} for p in scan_datasets("~/Downloads/example_pen_in_cup", postfix="trajectory_im128.h5")],
             ],
@@ -144,7 +146,7 @@ def make_generator_helper(args):
         generator.add_param(
             key="train.data",
             name="ds",
-            group=2,
+            group=1,
             values=[
                 [
                     {"path": "TODO.hdf5"},  # replace with your own path
@@ -201,7 +203,7 @@ def make_generator_helper(args):
 
 if __name__ == "__main__":
     parser = get_argparser()
-    parser.add_argument("--goal_mode", nargs="+", choices=["random"])
+    parser.add_argument("--goal_mode", nargs="+", choices=["last", "last_obs", "random"])
     parser.add_argument("--demos", nargs="+", type=int)
 
     args = parser.parse_args()

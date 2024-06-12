@@ -9,7 +9,7 @@ import random
 from copy import deepcopy
 from contextlib import contextmanager
 from collections import OrderedDict
-
+from pathlib import Path
 import torch.utils.data
 
 import robomimic.utils.tensor_utils as TensorUtils
@@ -129,7 +129,7 @@ class SequenceDataset(torch.utils.data.Dataset):
 
         self.goal_mode = goal_mode
         if self.goal_mode is not None:
-            assert self.goal_mode in ["last"]
+            assert self.goal_mode in ["last", "last_obs", "random"]
         if not self.load_next_obs:
             assert self.goal_mode != "last"  # we use last next_obs as goal
 
@@ -504,6 +504,13 @@ class SequenceDataset(torch.utils.data.Dataset):
         goal_index = None
         if self.goal_mode == "last":
             goal_index = end_index_in_demo - 1
+            goal_prefix = "next_obs"
+        elif self.goal_mode == "random":
+            goal_index = random.randint(index_in_demo, end_index_in_demo)
+            goal_prefix = "obs"
+        elif self.goal_mode == "last_obs":
+            goal_index = end_index_in_demo - 1
+            goal_prefix = "obs"
 
         meta["obs"] = self.get_obs_sequence_from_demo(
             demo_id,
@@ -531,7 +538,7 @@ class SequenceDataset(torch.utils.data.Dataset):
                 keys=self.obs_keys,
                 num_frames_to_stack=0,
                 seq_length=1,
-                prefix="next_obs",
+                prefix=goal_prefix
             )
             meta["goal_obs"] = {k: goal[k][0] for k in goal}  # remove sequence dimension for goal
 

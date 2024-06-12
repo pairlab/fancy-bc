@@ -57,7 +57,7 @@
         ],
         "action_keys": ["action"],
         "action_config": {"action": {"type": "continuous", "dim": 39, "normalization": "gaussian"}},
-        "goal_mode": null,
+        "goal_mode": "last_obs",
         "cuda": true,
         "batch_size": 128,
         "num_epochs": 10000,
@@ -110,8 +110,8 @@
                 "scan": []
             },
             "goal": {
-                "low_dim": [],
-                "rgb": [],
+                "low_dim": ["vec_obs"],
+                "rgb": ["fixed_camera"],
                 "depth": [],
                 "scan": []
             }
