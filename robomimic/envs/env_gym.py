@@ -5,6 +5,7 @@ with metadata present in datasets.
 """
 import json
 import numpy as np
+import os
 from copy import deepcopy
 
 import gym
@@ -12,6 +13,19 @@ try:
     import d4rl
 except:
     print("WARNING: could not load d4rl environments!")
+
+try:
+    import myosuite
+except:
+    print("WARNING: could not load myosuite environments!")
+
+if os.environ.get("TDMPC_PATH") and os.path.exists(os.environ.get("TDMPC_PATH")):
+    try:
+        import sys
+        sys.path.append(os.path.join(os.environ.get("TDMPC_PATH"), "tdmpc2"))
+        from envs.myosuite import MyoSuiteWrapper
+    except:
+        print("WARNING: could not load tdmpc2 environments!")
 
 import robomimic.envs.env_base as EB
 import robomimic.utils.obs_utils as ObsUtils
@@ -245,3 +259,71 @@ class EnvGym(EB.EnvBase):
         Pretty-print env description.
         """
         return self.name + "\n" + json.dumps(self._init_kwargs, sort_keys=True, indent=4)
+
+class EnvMyo(EnvGym):
+    """
+    This class combines the EnvGym and MyoSuiteWrapper to create a MyoSuite environment
+    that is compatible with the EnvGym format. It optionally supports observation padding.
+    """
+    def __init__(self, env_name, pad_to_shape=None, **env_args):
+        """
+        Initialize the MyoSuite environment wrapped by EnvGym functionalities. Optionally pad observations.
+
+        Args:
+            env_name (str): name of the MyoSuite environment.
+            pad_to_shape (tuple, optional): If provided, observations will be padded to this shape.
+        """
+        super().__init__(env_name)
+        self.env = MyoSuiteWrapper(self.env, env_args)
+        self._current_obs = None
+        self._current_reward = None
+        self._current_done = None
+        self.pad_to_shape = pad_to_shape
+        if pad_to_shape is not None:
+            assert isinstance(pad_to_shape, tuple), "pad_to_shape must be a tuple"
+            self.padding = [pad - s for pad, s in zip(pad_to_shape, self.env.observation_space.shape)]
+            self.observation_space = gym.spaces.Dict({
+                "vec_obs": gym.spaces.Box(
+                    low=np.pad(self.env.observation_space.low, pad_width=[(0, pad) for pad in self.padding]),
+                    high=np.pad(self.env.observation_space.high, pad_width=[(0, pad) for pad in self.padding])
+                ),
+                "fixed_image": gym.spaces.Box(
+                    low=0, high=255, shape=(3, 64, 64), dtype=np.uint8  # Assuming fixed image size and RGB channels
+                )
+            })
+
+    def render(self, **kwargs):
+        """
+        Render the environment using MyoSuite-specific rendering.
+
+        Args:
+            kwargs (dict): additional arguments to pass to the render method of the MyoSuiteWrapper.
+
+        Returns:
+            Rendered image or None.
+        """
+        return self.env.render(**kwargs)
+
+    def get_observation(self, obs=None):
+        """
+        Get current environment observation dictionary. Optionally pad the observation if pad_to_shape is provided.
+
+        Args:
+            obs (np.array): current flat observation vector to wrap and provide as a dictionary.
+                If not provided, uses self._current_obs.
+
+        Returns:
+            dict: observation dictionary
+        """
+        if obs is None:
+            assert self._current_obs is not None
+            obs = self._current_obs
+        if self.pad_to_shape is not None:
+            obs = np.pad(obs, [(0, pad) for pad in self.padding], mode='constant')
+        return {"vec_obs": np.copy(obs), "fixed_camera": self.render(mode="rgb_array")}
+
+    def __repr__(self):
+        """
+        Pretty-print env description.
+        """
+        return f"EnvMyo({self._env_name})\n" + json.dumps(self._init_kwargs, sort_keys=True, indent=4)

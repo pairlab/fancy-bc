@@ -56,6 +56,8 @@ class ACT(BC_VAE):
             self.proprio_dim += self.obs_key_shapes[k][0]
 
         from detr.main import build_ACT_model_and_optimizer
+        from detr.models.latent_model import Latent_Model_Transformer
+
         policy_config = {'num_queries': self.chunk_size,
                          'hidden_dim': self.algo_config.act.hidden_dim,
                          'dim_feedforward': self.algo_config.act.dim_feedforward,
@@ -83,6 +85,8 @@ class ACT(BC_VAE):
         self.vq_ce_weight = self.algo_config.loss.vq_ce_weight
         model, optimizer = build_ACT_model_and_optimizer(policy_config)
         self.nets["policy"] = model
+        if self.use_vq:
+            self.nets["latent_model"] = Latent_Model_Transformer(policy_config['vq_dim'], policy_config['vq_dim'], policy_config['vq_class'])
         self.nets = self.nets.float().to(self.device)
 
         self.temporal_agg = False
@@ -91,6 +95,15 @@ class ACT(BC_VAE):
         self._step_counter = 0
         self.a_hat_store = None
 
+    def deserialize(self, model_dict):
+        """
+        Load model from a checkpoint.
+
+        Args:
+            model_dict (dict): a dictionary saved by self.serialize() that contains
+                the same keys as @self.network_classes
+        """
+        self.nets.load_state_dict(model_dict, strict=False)
 
     def process_batch_for_training(self, batch):
         """
@@ -205,9 +218,13 @@ class ACT(BC_VAE):
         images = torch.cat(images, axis=1)
 
         env_state = torch.zeros([qpos.shape[0], 10]).cuda() # not used
+        if self.use_vq:
+            vq_sample = self.nets["latent_model"].generate(1, temperature=1, x=None)
+        else:
+            vq_sample = torch.zeros([qpos.shape[0], self.nets["policy"].vq_class * self.nets["policy"].vq_dim]).cuda()
 
         if self._step_counter % self.query_frequency == 0:
-            a_hat, is_pad_hat, (mu, logvar) = self.nets["policy"](qpos, images, env_state)
+            a_hat, is_pad_hat, (mu, logvar), probs, gt_labels = self.nets["policy"](qpos, images, env_state, vq_sample=vq_sample)
             self.a_hat_store = a_hat
 
         action = self.a_hat_store[:, self._step_counter % self.query_frequency, :]
