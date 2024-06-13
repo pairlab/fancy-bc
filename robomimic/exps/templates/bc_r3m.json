@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "bc_rnn_r3m_switch_scissors",
+        "name": "bc_rnn_r3m_bidex",
         "validate": false,
         "logging": {
             "terminal_output_to_txt": true,
@@ -37,16 +37,8 @@
         }
     },
     "train": {
-        "data": [{
-                "path": "/home/krishnans/lustre/datasets/bidex_scissors/rollouts_1000.hdf5",
-		"weight": 0.5
-            }, 
-	    {
-                "path": "/home/krishnans/lustre/datasets/bidex_switch/rollouts_1000.hdf5",
-		"weight": 0.5
-            }
-	],
-	"load_env_meta": false,
+        "data": null,
+        "load_env_meta": false,
         "output_dir": "../bc_rnn_trained_models",
         "num_data_workers": 4,
         "hdf5_cache_mode": "low_dim",
@@ -59,11 +51,9 @@
         "pad_seq_length": true,
         "frame_stack": 1,
         "pad_frame_stack": true,
-        "dataset_keys": [
-            "actions"
-        ],
+        "dataset_keys": ["actions"],
         "action_keys": ["actions"],
-        "action_config": {"actions": {"type": "continuous", "dim": 22, "normalization": "min_max"}},
+        "action_config": {"actions": {"type": "continuous", "dim": 22, "normalization": "gaussian"}},
         "goal_mode": null,
         "cuda": true,
         "batch_size": 100,

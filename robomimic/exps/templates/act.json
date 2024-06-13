@@ -134,6 +134,7 @@
                     "right_hand_pos"
                 ],
                 "rgb": ["fixed_camera"],
+                "one_hot": ["task_id"],
                 "depth": [],
                 "scan": []
             },
@@ -148,6 +149,12 @@
             "low_dim": {
                 "core_class": null,
                 "core_kwargs": {},
+                "obs_randomizer_class": null,
+                "obs_randomizer_kwargs": {}
+            },
+            "one_hot": {
+                "core_class": "OneHotEncoder",
+                "core_kwargs": {"num_classes": 10, "num_dims": 32},
                 "obs_randomizer_class": null,
                 "obs_randomizer_kwargs": {}
             },

@@ -16,6 +16,9 @@ import robomimic.utils.torch_utils as TorchUtils
 from robomimic.algo import RolloutPolicy
 
 from bidexhands.tasks.hand_base.vec_task import VecTaskPython
+from bidexhands.tasks.shadow_hand_scissors import ShadowHandScissors
+from bidexhands.tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
+from bidexhands.tasks.shadow_hand_switch import ShadowHandSwitch
 from bidexhands.utils.config import parse_sim_params, load_cfg, retrieve_cfg
 
 bidexenvs_root = os.getenv("BIDEXHANDS_ROOT", Path("~/ngc/DexterousHands/bidexhands").expanduser())

@@ -6,7 +6,18 @@ import glob
 TASK_SETS = {
     "allegro": ["spray_bottle", "scissors", "stapler"],
     "bidex": ["scissors", "switch", "bottle"],
-    "myodex": ["reach", "push", "pick_and_place", "stack"],
+    "myodex": [
+        'myo-reach',
+        'myo-reach-hard',
+        'myo-pose',
+        'myo-pose-hard',
+        'myo-obj-hold',
+        'myo-obj-hold-hard',
+        'myo-key-turn',
+        'myo-key-turn-hard',
+        'myo-pen-twirl',
+        'myo-pen-twirl-hard'
+    ],
 }
 
 
@@ -116,6 +127,7 @@ def add_task_id(dataset_paths, task_names, task_set='bidex'):
     for dataset_path, task_name in zip(dataset_paths, task_names):
         task_id = TASK_SETS[task_set].index(task_name)
         with h5py.File(dataset_path, "a") as data:
+            print(f"writing task_id to dataset: {str(dataset_path)}") 
             for ep in data["data"].keys():
                 task_idx = np.ones(data["data/{}".format(ep)].attrs["num_samples"]) * task_id
                 if "task_id" not in data["data/{}/obs".format(ep)].keys():

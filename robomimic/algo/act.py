@@ -8,8 +8,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
 
+from pathlib import Path 
 import robomimic.utils.tensor_utils as TensorUtils
-
 from robomimic.algo import register_algo_factory_func, PolicyAlgo
 from robomimic.algo.bc import BC_VAE
 
@@ -83,10 +83,15 @@ class ACT(BC_VAE):
         self.vq_l1_weight = self.algo_config.loss.vq_l1_weight
         self.vq_weight = self.algo_config.loss.vq_weight
         self.vq_ce_weight = self.algo_config.loss.vq_ce_weight
+        self.expert_checkpoints = self.algo_config.act.expert_checkpoints
         model, optimizer = build_ACT_model_and_optimizer(policy_config)
         self.nets["policy"] = model
         if self.use_vq:
             self.nets["latent_model"] = Latent_Model_Transformer(policy_config['vq_dim'], policy_config['vq_dim'], policy_config['vq_class'])
+
+        if self.load_critics:
+            self.nets["critic"] = self.load_critic()
+
         self.nets = self.nets.float().to(self.device)
 
         self.temporal_agg = False
@@ -94,6 +99,46 @@ class ACT(BC_VAE):
 
         self._step_counter = 0
         self.a_hat_store = None
+
+    def load_critic(self):
+        def get_algo(model_path):
+            if "PPO" in model_path:
+                return "PPO"
+            elif "TDMPC2" in model_path:
+                return "TDMPC2"
+            else:
+                raise ValueError(f"Unsupported algorithm: {model_path}")
+
+        critics = nn.ModuleDict()
+        for task, model_path in self.expert_checkpoints.items():
+            if "ppo" in model_path.lower():
+                from stable_baselines3 import PPO
+                model = PPO.load(model_path)
+                critics[task] = model
+            elif "tdmpc" in model_path.lower():
+                model = self.initialize_tdmpc2_model(task, model_path)
+                critics[task] = model
+        else:
+            raise ValueError(f"Unsupported algorithm: {self.algo}")
+
+        return critics
+
+    def initialize_tdmpc2_model(self, task, model_path):
+        import sys, os 
+        tdmpc_path = Path(os.environ.get("TDMPC_PATH", "~/tdmpc2")).absolute()
+
+        sys.path.append(str(tdmpc_path / "tdmpc2"))
+        import hydra
+        from common.world_model import WorldModel
+        from common.parser import parse_cfg
+
+        with hydra.initialize_config_dir(config_path=str(tdmpc_path / "tdmpc2")):
+            cfg = hydra.compose(config_name="config", overrides=[f'task={task}'])
+
+        model = WorldModel(cfg).to(self.device)
+        state_dict = torch.load(model_path)
+        model.load_state_dict(state_dict["model"])
+        return model
 
     def deserialize(self, model_dict):
         """
