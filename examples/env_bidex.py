@@ -57,7 +57,6 @@ class BidexEnvArgs:
     num_threads: int = 0
     subscenes: int = 0
     slices: int = 0
-    headless: bool = True
     physics_engine: gymapi.SimType = gymapi.SIM_PHYSX
     use_rlg_config: bool = False
 
