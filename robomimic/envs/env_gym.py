@@ -26,6 +26,8 @@ if os.environ.get("TDMPC_PATH") and os.path.exists(os.environ.get("TDMPC_PATH"))
         from envs.myosuite import MyoSuiteWrapper
     except:
         print("WARNING: could not load tdmpc2 environments!")
+else:
+    print("WARNING: TDMPC_PATH not set or does not exist!")
 
 import robomimic.envs.env_base as EB
 import robomimic.utils.obs_utils as ObsUtils

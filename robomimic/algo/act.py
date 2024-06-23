@@ -83,6 +83,7 @@ class ACT(BC_VAE):
         self.vq_l1_weight = self.algo_config.loss.vq_l1_weight
         self.vq_weight = self.algo_config.loss.vq_weight
         self.vq_ce_weight = self.algo_config.loss.vq_ce_weight
+        self.vq_alpha = self.algo_config.loss.alpha
         self.expert_checkpoints = self.algo_config.act.expert_checkpoints
         model, optimizer = build_ACT_model_and_optimizer(policy_config)
         self.nets["policy"] = model
@@ -101,16 +102,9 @@ class ACT(BC_VAE):
         self.a_hat_store = None
 
     def load_critic(self):
-        def get_algo(model_path):
-            if "PPO" in model_path:
-                return "PPO"
-            elif "TDMPC2" in model_path:
-                return "TDMPC2"
-            else:
-                raise ValueError(f"Unsupported algorithm: {model_path}")
-
         critics = nn.ModuleDict()
-        for task, model_path in self.expert_checkpoints.items():
+        for ckpt in self.expert_checkpoints:
+            task, model_path = ckpt["task"], ckpt["model_path"]
             if "ppo" in model_path.lower():
                 from stable_baselines3 import PPO
                 model = PPO.load(model_path)
@@ -303,6 +297,9 @@ class ACT(BC_VAE):
             recons_loss=recons_loss,
             kl_loss=kl_loss,
         )
+        if self.vq_alpha > 0:
+            action_loss = action_loss + self.vq_alpha * self.compute_critic_loss(predictions["actions"], batch)
+
         if self.use_vq:
             probs = predictions["probs"]
             gt_labels = predictions["gt_labels"]
@@ -312,6 +309,13 @@ class ACT(BC_VAE):
             losses["vq_discrepancy"] = vq_discrepancy
         losses["action_loss"] = action_loss
         return losses
+    
+    def compute_critic_loss(self, actions, batch):
+        critic_loss = 0
+        for task in batch['obs']['task_id'].unique():
+            task_mask = batch['obs']['task_id'] == task
+            critic_loss += self.critic.values()[task].predict(actions[task_mask], batch['obs']['vec_obs'][task_mask])
+        return critic_loss
 
     def compute_vq_loss(self, probs, gt_labels):
         # F.l1_loss(probs, gt_labels, reduction='mean')
