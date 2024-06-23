@@ -22,8 +22,9 @@ import robomimic.utils.tensor_utils as TensorUtils
 import robomimic.utils.env_utils as EnvUtils
 from robomimic.algo import RolloutPolicy
 import myosuite
+from pprint import pprint
 
-#from env_bidex import create_bidex_env 
+# from env_bidex import create_bidex_env 
 
 plt_root = os.getenv("POLICY_LEARNING_TOOLKIT_ROOT", Path("../../policy_learning_toolkit/").expanduser())
 igenvs_root = os.getenv("ISAACGYM_ROOT", Path("~/diff_manip/external/IsaacGymEnvs").expanduser())
@@ -64,6 +65,8 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
     try:
         for step_i in range(horizon):
             obs_dict = {}
+            pprint(vars(env))
+            print(env._current_obs)
             if hasattr(env, 'task'):
                 env_obs_dict = env.task.obs_dict
             else:
@@ -142,19 +145,6 @@ class MyoSuiteCameraWrapper(gym.Wrapper):
             camera_id=cam_name) for cam_name in self.camera_names
             }
 
-MYOSUITE_TASKS = {
-    'myo-reach': 'myoHandReachFixed-v0',
-    'myo-reach-hard': 'myoHandReachRandom-v0',
-    'myo-pose': 'myoHandPoseFixed-v0',
-    'myo-pose-hard': 'myoHandPoseRandom-v0',
-    'myo-obj-hold': 'myoHandObjHoldFixed-v0',
-    'myo-obj-hold-hard': 'myoHandObjHoldRandom-v0',
-    'myo-key-turn': 'myoHandKeyTurnFixed-v0',
-    'myo-key-turn-hard': 'myoHandKeyTurnRandom-v0',
-    'myo-pen-twirl': 'myoHandPenTwirlFixed-v0',
-    'myo-pen-twirl-hard': 'myoHandPenTwirlRandom-v0',
-}
-
 def eval_myo(ckpt_path):
 
     device = TorchUtils.get_torch_device(try_to_use_cuda=True)
@@ -167,6 +157,7 @@ def eval_myo(ckpt_path):
      
     config, _ = config_from_checkpoint(algo_name=ckpt_dict["algo_name"], ckpt_dict=ckpt_dict, verbose=False)
     env_meta = FileUtils.get_env_metadata_from_dataset(dataset_path=config.train.data[0]["path"])
+    env_meta['env_kwargs']['pad_to_shape'] = tuple(env_meta['env_kwargs']['pad_to_shape'])
     shape_meta = FileUtils.get_shape_metadata_from_dataset(
         dataset_path=config.train.data[0]["path"],
         action_keys=config.train.action_keys,
@@ -198,7 +189,7 @@ def eval_myo(ckpt_path):
     )
     print(stats)
     # video_writer.close()
-  
+
 def eval_isaacgym(ckpt_path=None):
 
     ckpt_path = ckpt_path or "../bc_trained_models/test/20240403143734/models/model_epoch_2000.pth"
@@ -318,4 +309,6 @@ if __name__ == "__main__":
     script_parser.add_argument("--task", type=str, default="ShadowHandScissors")
     script_parser.add_argument("--rlgames","--rlg", action="store_true")
     main(script_parser.parse_args())
+
+
 

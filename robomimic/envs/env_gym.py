@@ -19,13 +19,18 @@ try:
 except:
     print("WARNING: could not load myosuite environments!")
 
+os.environ["TDMPC_PATH"] = "/home/bsud/multi_task_experts/collect_myosuite/tdmpc2"
 if os.environ.get("TDMPC_PATH") and os.path.exists(os.environ.get("TDMPC_PATH")):
     try:
         import sys
         sys.path.append(os.path.join(os.environ.get("TDMPC_PATH"), "tdmpc2"))
         from envs.myosuite import MyoSuiteWrapper
-    except:
+        print("Successfully imported MyoSuiteWrapper")
+    except Exception as e:
+        print("exception " , str(e))
         print("WARNING: could not load tdmpc2 environments!")
+else:
+    print("TDMPC path does not exist")
 
 import robomimic.envs.env_base as EB
 import robomimic.utils.obs_utils as ObsUtils
@@ -327,3 +332,5 @@ class EnvMyo(EnvGym):
         Pretty-print env description.
         """
         return f"EnvMyo({self._env_name})\n" + json.dumps(self._init_kwargs, sort_keys=True, indent=4)
+
+
