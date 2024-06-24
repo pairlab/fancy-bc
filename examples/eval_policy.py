@@ -1,12 +1,17 @@
-import isaacgym
-import isaacgymenvs
+try:
+    import isaacgym
+    import isaacgymenvs
+except ImportError:
+    print("Unable to import IsaacGymEnvs package.")
+
 import os
-import isaacgym
+import gym
 import numpy as np
 from copy import deepcopy
 from hydra import compose, initialize_config_dir
 from pathlib import Path
 from robomimic.utils.vis_utils import make_model_img_feature_plot
+from omegaconf import OmegaConf
 
 import torch
 import json
@@ -25,7 +30,25 @@ igenvs_root = os.getenv("ISAACGYM_ROOT", Path("~/diff_manip/external/IsaacGymEnv
 bidexenvs_root = os.getenv("BIDEXHANDS_ROOT", Path("~/ngc/DexterousHands/bidexhands").expanduser())
 
 
-def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5, camera_names=None):
+def get_obs_dict(obs, obs_keys, env):
+    obs_dict = {}
+    if hasattr(env, 'task'):
+        env_obs_dict = env.task.obs_dict
+    elif hasattr(env, 'obs_dict'):
+        env_obs_dict = env.obs_dict
+    else:
+        # handle myodex envs
+        obs_dict = {"vec_obs": obs, "fixed_camera": env.get_camera_obs()["fixed_camera"]}
+    for k in obs_keys:
+        if "camera" in k and env_obs_dict[k].shape[3] == 3:
+            obs_dict[k] = env_obs_dict[k].permute(0, 3, 1, 2)
+            print(obs_dict[k].shape)
+        else:
+            obs_dict[k] = env_obs_dict[k]
+
+
+
+def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5, camera_names=None, device="cuda"):
     """
     Helper function to carry out rollouts. Supports on-screen rendering, off-screen rendering to a video, 
     and returns the rollout trajectory.
@@ -58,23 +81,13 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
     total_reward = 0.
     try:
         for step_i in range(horizon):
-            obs_dict = {}
-            if hasattr(env, 'task'):
-                env_obs_dict = env.task.obs_dict
-            else:
-                env_obs_dict = env.obs_dict
-            for k in obs_keys:
-                if "camera" in k and env_obs_dict[k].shape[3] == 3:
-                    obs_dict[k] = env_obs_dict[k].permute(0, 3, 1, 2)
-                    print(obs_dict[k].shape)
-                else:
-                    obs_dict[k] = env_obs_dict[k]
+            obs_dict = get_obs_dict(obs, obs_keys, env)
 
             # get action from policy
             act = policy(ob=obs_dict, batched=True)
 
             # play action
-            next_obs, r, done, info = env.step(torch.tensor(act, device=env.device, dtype=torch.float))
+            next_obs, r, done, info = env.step(torch.tensor(act, device=device, dtype=torch.float))
 
             # compute reward
             total_reward += r
@@ -108,6 +121,92 @@ def rollout(policy, env, horizon, render=False, video_writer=None, video_skip=5,
 
     return stats
 
+
+class MyoSuiteCameraWrapper(gym.Wrapper):
+    def __init__(self, env, frame_size=(64, 64), camera_names=['hand_side_inter']):
+        super().__init__(env)
+        self.env = env
+        self.frame_size = frame_size
+        self.camera_names = camera_names
+        self.camera_observation_space = spaces.Dict({
+            cam_name: spaces.Box(0, 255, (*frame_size, 3), dtype=np.uint8)
+            for cam_name in self.camera_names
+        })
+        self.has_rendered = False
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        info.update(self.get_camera_obs())
+        info['success'] = info['solved']
+        return obs, reward, done, info
+
+    def get_camera_obs(self):
+        if not self.has_rendered: 
+            self.env.sim.renderer.render_offscreen(width=5, height=5, camera_id=-1)
+            self.has_rendered = True
+            self.env.sim.renderer._scene_option.flags[mjtVisFlag.mjVIS_STATIC] = 0
+        return {cam_name: self.env.sim.renderer.render_offscreen(
+            width=self.frame_size[0], height=self.frame_size[1],
+            camera_id=cam_name) for cam_name in self.camera_names
+            }
+
+MYOSUITE_TASKS = {
+    'myo-reach': 'myoHandReachFixed-v0',
+    'myo-reach-hard': 'myoHandReachRandom-v0',
+    'myo-pose': 'myoHandPoseFixed-v0',
+    'myo-pose-hard': 'myoHandPoseRandom-v0',
+    'myo-obj-hold': 'myoHandObjHoldFixed-v0',
+    'myo-obj-hold-hard': 'myoHandObjHoldRandom-v0',
+    'myo-key-turn': 'myoHandKeyTurnFixed-v0',
+    'myo-key-turn-hard': 'myoHandKeyTurnRandom-v0',
+    'myo-pen-twirl': 'myoHandPenTwirlFixed-v0',
+    'myo-pen-twirl-hard': 'myoHandPenTwirlRandom-v0',
+}
+
+def eval_myo(ckpt_path):
+
+    device = TorchUtils.get_torch_device(try_to_use_cuda=True)
+    
+    policy, ckpt_dict = FileUtils.policy_from_checkpoint(
+        ckpt_path=ckpt_path, 
+        device=device, 
+        verbose=True
+    )
+     
+    config, _ = config_from_checkpoint(algo_name=ckpt_dict["algo_name"], ckpt_dict=ckpt_dict, verbose=False)
+    env_meta = FileUtils.get_env_metadata_from_dataset(dataset_path=config.train.data[0]["path"])
+    shape_meta = FileUtils.get_shape_metadata_from_dataset(
+        dataset_path=config.train.data[0]["path"],
+        action_keys=config.train.action_keys,
+        all_obs_keys=config.all_obs_keys,
+        verbose=True
+    )
+    env = EnvUtils.create_env_from_metadata(
+        env_meta=env_meta, 
+        render=False, 
+        render_offscreen=True,
+        use_image_obs=shape_meta["use_images"],
+    )
+    env = EnvUtils.wrap_env_from_config(env, config=config)
+    #env = MyoSuiteCameraWrapper(env)
+    rollout_horizon = 150
+    np.random.seed(0)
+    torch.manual_seed(0)
+    video_path = "rollout.mp4"
+    # video_writer = imageio.get_writer(video_path, fps=20)
+
+    stats = rollout(
+        policy=policy, 
+        env=env, 
+        horizon=rollout_horizon, 
+        render=True, 
+        # video_writer=video_writer, 
+        # video_skip=5, 
+        camera_names=["hand_camera"]
+    )
+    print(stats)
+    # video_writer.close()
+  
 def eval_isaacgym(ckpt_path=None):
 
     ckpt_path = ckpt_path or "../bc_trained_models/test/20240403143734/models/model_epoch_2000.pth"
@@ -185,7 +284,8 @@ def eval_bidexhands(task, ckpt_path, rlgames, hdf5_path=None):
         render=False, 
         # video_writer=video_writer, 
         # video_skip=5, 
-        camera_names=["hand_camera"]
+        camera_names=["hand_camera"],
+        device=env.device
     )
     print(stats)
     visualize_feature_layer(policy.policy, env, hdf5_path)
@@ -215,6 +315,8 @@ def main(args):
         eval_isaacgym(args.ckpt_path)
     elif args.bidexhands:
         eval_bidexhands(args.task, args.ckpt_path, args.rlgames, args.hdf5_path)
+    elif args.myodex:
+        eval_myo(args.ckpt_path)
 
 if __name__ == "__main__":
     import argparse
@@ -223,6 +325,7 @@ if __name__ == "__main__":
     script_parser.add_argument("--hdf5_path", type=str, default="")
     script_parser.add_argument("--isaacgym", action="store_true")
     script_parser.add_argument("--bidexhands", action="store_true")
+    script_parser.add_argument("--myodex", action="store_true")
     script_parser.add_argument("--task", type=str, default="ShadowHandScissors")
     script_parser.add_argument("--rlgames","--rlg", action="store_true")
     main(script_parser.parse_args())
