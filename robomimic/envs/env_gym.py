@@ -11,13 +11,13 @@ from copy import deepcopy
 import gym
 try:
     import d4rl
-except:
-    print("WARNING: could not load d4rl environments!")
+except Exception as e:
+    print("WARNING: could not load d4rl environments!", str(e))
 
 try:
     import myosuite
-except:
-    print("WARNING: could not load myosuite environments!")
+except Exception as e:
+    print("WARNING: could not load myosuite environments!", str(e))
 
 os.environ["TDMPC_PATH"] = "/home/bsud/multi_task_experts/collect_myosuite/tdmpc2"
 if os.environ.get("TDMPC_PATH") and os.path.exists(os.environ.get("TDMPC_PATH")):

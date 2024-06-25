@@ -90,6 +90,7 @@ class BC(PolicyAlgo):
             mlp_layer_dims=self.algo_config.actor_layer_dims,
             encoder_kwargs=ObsUtils.obs_encoder_kwargs_from_config(self.obs_config.encoder),
         )
+        print("network device ", self.device)
         self.nets = self.nets.float().to(self.device)
 
     def process_batch_for_training(self, batch):
@@ -247,7 +248,10 @@ class BC(PolicyAlgo):
             action (torch.Tensor): action tensor
         """
         assert not self.nets.training
-        return self.nets["policy"](obs_dict, goal_dict=goal_dict)
+        print("nets ", self.nets["policy"])
+        return_val = self.nets["policy"](obs_dict, goal_dict=goal_dict)
+        print("got result")
+        return return_val
 
 
 class BC_Gaussian(BC):

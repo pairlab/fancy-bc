@@ -172,6 +172,7 @@ def create_env(
 
     # note: pass @postprocess_visual_obs True, to make sure images are processed for network inputs
     env_class = get_env_class(env_type=env_type)
+    print("class is ", env_class)
     env = env_class(
         env_name=env_name, 
         render=render, 
@@ -298,3 +299,5 @@ def wrap_env_from_config(env, config):
         env = FrameStackWrapper(env, num_frames=config.train.frame_stack)
 
     return env
+
+
