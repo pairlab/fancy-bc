@@ -53,10 +53,10 @@
         "frame_stack": 1,
         "pad_frame_stack": true,
         "dataset_keys": [
-            "actions"
+            "action"
         ],
-        "action_keys": ["actions"],
-        "action_config": {"actions": {"type": "continuous", "dim": 22}},
+        "action_keys": ["action"],
+        "action_config": {"action": {"type": "continuous", "dim": 22}},
         "goal_mode": null,
         "cuda": true,
         "batch_size": 100,
@@ -187,7 +187,8 @@
             },
             "rgb": {
                 "core_class": "VisualCore",
-                "core_kwargs": {             
+                "core_kwargs": {
+                    "feature_dimension": 64,
                     "backbone_class": "ResNet18Conv",
                     "backbone_kwargs": {
                         "pretrained": false,
@@ -200,13 +201,6 @@
                         "temperature": 1.0,
                         "noise_std": 0.0
                     }
-                }, 
-                "obs_randomizer_class": "CropRandomizer",
-                "obs_randomizer_kwargs": {
-                    "crop_height": 200,
-                    "crop_width": 200,
-                    "num_crops": 1,
-                    "pos_enc": false
                 }
             },
             "depth": {
