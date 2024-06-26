@@ -462,12 +462,10 @@ class ObservationGroupEncoder(Module):
         outputs = []
         # Deterministic order since self.observation_group_shapes is OrderedDict
         for obs_group in self.observation_group_shapes:
-            print("obs group ", obs_group)
             # pass through encoder
             outputs.append(
                 self.nets[obs_group].forward(inputs[obs_group])
             )
-            print("ran net on obs group")
 
         return torch.cat(outputs, dim=-1)
 
@@ -605,11 +603,8 @@ class MIMO_MLP(Module):
             outputs (dict): dictionary of output torch.Tensors, that corresponds
                 to @self.output_shapes
         """
-        print("in mimo mlp forward")
         enc_outputs = self.nets["encoder"](**inputs)
-        print("got encoding output ")
         mlp_out = self.nets["mlp"](enc_outputs)
-        print("got output")
         return self.nets["decoder"](mlp_out)
 
     def _to_string(self):

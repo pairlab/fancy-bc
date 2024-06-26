@@ -648,17 +648,13 @@ class RolloutPolicy(object):
         ob = self._prepare_observation(ob, batched=batched)
         if goal is not None:
             goal = self._prepare_observation(goal, batched=batched)
-        print("prepared obs")
-        print("policy is ", self.policy)
         try:
             ac = self.policy.get_action(obs_dict=ob, goal_dict=goal)
         except Exception as e:
             print("Exception getting action ", str(e))
-        print("got action before tensor")
         if not batched:
             ac = ac[0]
         ac = TensorUtils.to_numpy(ac)
-        print("got action")
         if self.action_normalization_stats is not None:
             action_keys = self.policy.global_config.train.action_keys
             action_shapes = {k: self.action_normalization_stats[k]["offset"].shape[1:] for k in self.action_normalization_stats}
