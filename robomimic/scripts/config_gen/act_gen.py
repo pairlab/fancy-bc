@@ -17,8 +17,20 @@ MYO_TASK_SET = {
         "myo-reach",
         "myo-reach-hard",
     ],
-    "myo5-easy": ["myo-key-turn", "myo-obj-hold", "myo-pen-twirl", "myo-pose", "myo-reach"],
-    "myo5-hard": ["myo-key-turn-hard", "myo-obj-hold-hard", "myo-pen-twirl-hard", "myo-pose-hard", "myo-reach-hard"],
+    "myo5-easy": [
+        "myo-key-turn",
+        "myo-obj-hold",
+        "myo-pen-twirl",
+        "myo-pose",
+        "myo-reach",
+    ],
+    "myo5-hard": [
+        "myo-key-turn-hard",
+        "myo-obj-hold-hard",
+        "myo-pen-twirl-hard",
+        "myo-pose-hard",
+        "myo-reach-hard",
+    ],
 }
 
 BIDEX_TASK_SET = {
@@ -26,11 +38,14 @@ BIDEX_TASK_SET = {
     "scissors": "/home/krishnans/lustre/datasets/bidex_scissors/rollouts_1000.hdf5",
 }
 
+
 def make_generator_helper(args):
     algo_name_short = "act"
     generator = get_generator(
         algo_name="act",
-        config_file=os.path.join(base_path, "robomimic/exps/templates/act_myo_r3m.json"),
+        config_file=os.path.join(
+            base_path, "robomimic/exps/templates/act_myo_r3m.json"
+        ),
         args=args,
         algo_name_short=algo_name_short,
         pt=True,
@@ -65,23 +80,28 @@ def make_generator_helper(args):
             cache_mode = ["all"]
         else:
             cache_mode = ["low_dim"]
-        generator.add_param(key="train.hdf5_cache_mode", name="", group=-1, values=cache_mode)
+        generator.add_param(
+            key="train.hdf5_cache_mode", name="", group=-1, values=cache_mode
+        )
 
         generator.add_param(
             key="train.data",
             name="ds",
             group=1,
             values=[
-                [
-                    {"path": str(p)}
-                    for p in list(data_dir.rglob("*.hdf5"))
-                ] for data_dir in Path(datasets_path).iterdir()
+                [{"path": str(p)} for p in list(data_dir.rglob("*.hdf5"))]
+                for data_dir in Path(datasets_path).iterdir()
             ],
             value_names=[data_dir.name for data_dir in Path(datasets_path).iterdir()],
         )
 
         if args.demos is not None:
-            generator.add_param(key="train.hdf5_filter_key", name="demos", group=2, values=[f"{demo}_demos" for demo in args.demos])
+            generator.add_param(
+                key="train.hdf5_filter_key",
+                name="demos",
+                group=2,
+                values=[f"{demo}_demos" for demo in args.demos],
+            )
 
         if args.goal_mode is not None:
             generator.add_param(
@@ -97,7 +117,7 @@ def make_generator_helper(args):
                     group=-1,
                     values=[["vec_obs"]],
                 )
-            else: 
+            else:
                 generator.add_param(
                     key="observation.modalities.goal.rgb",
                     name="",
@@ -119,7 +139,12 @@ def make_generator_helper(args):
             name="ds",
             group=1,
             values=[
-                [{"path": p} for p in scan_datasets("~/Downloads/example_pen_in_cup", postfix="trajectory_im128.h5")],
+                [
+                    {"path": p}
+                    for p in scan_datasets(
+                        "~/Downloads/example_pen_in_cup", postfix="trajectory_im128.h5"
+                    )
+                ],
             ],
             value_names=[
                 "pen-in-cup",
@@ -192,7 +217,6 @@ def make_generator_helper(args):
         values=[
             "../{env}/{algo_name_short}".format(
                 env=args.env,
-                mod=args.mod,
                 algo_name_short=algo_name_short,
             )
         ],
@@ -203,7 +227,9 @@ def make_generator_helper(args):
 
 if __name__ == "__main__":
     parser = get_argparser()
-    parser.add_argument("--goal_mode", nargs="+", choices=["last", "last_obs", "random"])
+    parser.add_argument(
+        "--goal_mode", nargs="+", choices=["last", "last_obs", "random"]
+    )
     parser.add_argument("--demos", nargs="+", type=int)
 
     args = parser.parse_args()

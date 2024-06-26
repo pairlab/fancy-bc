@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "bc_rnn_r3m_bidex",
+        "name": "bc_rnn_r3m_myo",
         "validate": false,
         "logging": {
             "terminal_output_to_txt": true,
@@ -40,7 +40,7 @@
         "data": null,
         "load_env_meta": false,
         "output_dir": "../bc_rnn_trained_models",
-        "num_data_workers": 4,
+        "num_data_workers": 16,
         "hdf5_cache_mode": "low_dim",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
@@ -51,12 +51,12 @@
         "pad_seq_length": true,
         "frame_stack": 1,
         "pad_frame_stack": true,
-        "dataset_keys": ["actions"],
-        "action_keys": ["actions"],
-        "action_config": {"actions": {"type": "continuous", "dim": 22, "normalization": "gaussian"}},
+        "dataset_keys": ["action"],
+        "action_keys": ["action"],
+        "action_config": {"action": {"type": "continuous", "dim": 22}},
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 100,
+        "batch_size": 128,
         "num_epochs": 2000,
         "seed": 1
     },
@@ -163,29 +163,9 @@
     "observation": {
         "modalities": {
             "obs": {
-                "low_dim": [
-                    "left_fingertip_force", 
-                    "left_fingertip_state",
-                    "left_hand_action",
-                    "left_hand_dof_force",
-                    "left_hand_dof_pos",
-                    "left_hand_dof_vel",
-                    "left_hand_euler",
-                    "left_hand_pos",
-                    "object_angvel",
-                    "object_linvel",
-                    "object_pose",
-                    "right_fingertip_force",
-                    "right_fingertip_state",
-                    "right_hand_action",
-                    "right_hand_dof_force",
-                    "right_hand_dof_pos",
-                    "right_hand_dof_vel",
-                    "right_hand_euler",
-                    "right_hand_pos"
-                ],
+                "low_dim": ["vec_obs"],
                 "rgb": ["fixed_camera"],
-                "one_hot": ["task_id"],
+                "one_hot": [],
                 "depth": [],
                 "scan": []
             },
