@@ -116,7 +116,7 @@ def get_base_config(algo_name):
         config = Config(json.load(f))
 
     # small dataset with a handful of trajectories
-    config.train.data = example_dataset_path()
+    config.train.data = [{"path": example_dataset_path()}]
 
     # temporary model dir
     model_dir = temp_model_dir_path()
