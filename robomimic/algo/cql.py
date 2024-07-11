@@ -352,11 +352,11 @@ class CQL(PolicyAlgo, ValueAlgo):
 
         # Add info
         info["entropy_weight"] = entropy_weight.item()
-        info["entropy_weight_loss"] = (
-            entropy_weight_loss.item()
-            if self.automatic_entropy_tuning and not validate
-            else entropy_weight_loss
-        )
+        if self.automatic_entropy_tuning:
+            info["entropy_weight_loss"] = entropy_weight_loss
+        else:
+            info["entropy_weight_loss"] = 0.0
+
         info["actor/loss"] = policy_loss
 
         # Take a training step if we're not validating
@@ -550,6 +550,7 @@ class CQL(PolicyAlgo, ValueAlgo):
         # Calculate the losses for all critics
         cql_losses = []
         critic_losses = []
+        td_losses = []
         cql_weight = torch.clamp(self.log_cql_weight.exp(), min=0.0, max=1000000.0)
         info["critic/cql_weight"] = cql_weight.item()
         for i, (q_pred, q_cat) in enumerate(zip(q_preds, q_cats)):
@@ -562,11 +563,13 @@ class CQL(PolicyAlgo, ValueAlgo):
                 - self.target_q_gap
             )
             cql_losses.append(cql_loss)
+            td_losses.append(td_loss)
             # Calculate total loss
             loss = td_loss + cql_loss
             critic_losses.append(loss)
             info[f"critic/critic{i+1}_loss"] = loss
         info["critic/cql_losses"] = cql_losses
+        info["critic/td_losses"] = td_losses
 
         # Run gradient descent if we're not validating
         if not validate:
