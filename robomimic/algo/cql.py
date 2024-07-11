@@ -354,7 +354,7 @@ class CQL(PolicyAlgo, ValueAlgo):
         info["entropy_weight"] = entropy_weight.item()
         info["entropy_weight_loss"] = (
             entropy_weight_loss.item()
-            if self.automatic_entropy_tuning
+            if self.automatic_entropy_tuning and not validate
             else entropy_weight_loss
         )
         info["actor/loss"] = policy_loss
@@ -566,6 +566,7 @@ class CQL(PolicyAlgo, ValueAlgo):
             loss = td_loss + cql_loss
             critic_losses.append(loss)
             info[f"critic/critic{i+1}_loss"] = loss
+        info["critic/cql_losses"] = cql_losses
 
         # Run gradient descent if we're not validating
         if not validate:
