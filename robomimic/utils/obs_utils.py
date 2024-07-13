@@ -489,13 +489,23 @@ def normalize_dict(dict, normalization_stats):
         # check shape consistency
         shape_len_diff = len(offset.shape) - len(dict[m].shape)
         assert shape_len_diff in [0, 1], "shape length mismatch in @normalize_dict"
-        # if dict has no leading batch dim, check shapes match exactly, else allow first dim to broadcast
-        assert offset.shape[1:] == dict[m].shape[(1 - shape_len_diff):], "shape mismatch in @normalize_dict"
+        
+        # Check if shapes are broadcastable
+        def is_broadcastable(shape1, shape2):
+            for a, b in zip(shape1[::-1], shape2[::-1]):
+                if a != 1 and b != 1 and a != b:
+                    return False
+            return True
+
+        assert is_broadcastable(offset.shape[1:], dict[m].shape[(1 - shape_len_diff):]), \
+            f"shapes are not broadcastable in @normalize_dict: {offset.shape[1:]} and {dict[m].shape[(1 - shape_len_diff):]}"
 
         # handle case where obs dict is not batched by removing stats batch dimension
         if shape_len_diff == 1:
             offset = offset[0]
             scale = scale[0]
+        offset = offset.to(dict[m].device)
+        scale = scale.to(dict[m].device)
 
         dict[m] = (dict[m] - offset) / scale
 
