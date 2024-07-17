@@ -623,7 +623,7 @@ class RolloutPolicy(object):
             batched (bool): whether the input is already batched
         """
         if self.obs_normalization_stats is not None:
-            ob = ObsUtils.normalize_dict(ob, obs_normalization_stats=self.obs_normalization_stats)
+            ob = ObsUtils.normalize_dict(ob, normalization_stats=self.obs_normalization_stats)
         ob = TensorUtils.to_tensor(ob)
         if not batched:
             ob = TensorUtils.to_batch(ob)
