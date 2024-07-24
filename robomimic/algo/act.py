@@ -89,9 +89,8 @@ class ACT(BC_VAE):
         self.nets["policy"] = model
         if self.use_vq:
             self.nets["latent_model"] = Latent_Model_Transformer(policy_config['vq_dim'], policy_config['vq_dim'], policy_config['vq_class'])
-
-        if self.load_critics:
-            self.nets["critic"] = self.load_critic()
+            if self.expert_checkpoints:
+                self.nets["critic"] = self.load_critic()
 
         self.nets = self.nets.float().to(self.device)
 
@@ -297,8 +296,6 @@ class ACT(BC_VAE):
             recons_loss=recons_loss,
             kl_loss=kl_loss,
         )
-        if self.vq_alpha > 0:
-            action_loss = action_loss + self.vq_alpha * self.compute_critic_loss(predictions["actions"], batch)
 
         if self.use_vq:
             probs = predictions["probs"]

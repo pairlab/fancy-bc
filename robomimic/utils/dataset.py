@@ -1196,7 +1196,7 @@ def action_stats_to_normalization_stats(action_stats, action_config):
                 "scale": scale,
                 "offset": offset
             }
-        elif norm_method == "gaussian":
+        elif norm_method in ["gaussian", "normal"]:
             # normalize to zero mean unit variance
             input_mean = action_stats[action_key]["mean"].astype(np.float32)
             input_std = np.sqrt(action_stats[action_key]["sqdiff"] / action_stats[action_key]["n"]).astype(np.float32)

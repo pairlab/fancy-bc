@@ -41,6 +41,7 @@ class ACTConfig(BaseConfig):
         self.algo.loss.vq_l1_weight = 1.0      # L1 loss weight
         self.algo.loss.vq_ce_weight = 0.0      # L1 loss weight
         self.algo.loss.vq_weight = 1.0      # L1 loss weight
+        self.algo.loss.alpha = 0.0      # Critic loss weight
         self.algo.loss.cos_weight = 0.0     # cosine loss weight
         self.algo.loss.kl_weight = 20       # KL weight of VAE
 
@@ -56,3 +57,4 @@ class ACTConfig(BaseConfig):
         self.algo.act.vq_dim = 64                                   # dimension of vector quantization
         self.algo.act.vq_class = 512                                # class of vector quantization
         self.algo.act.vq_weight = 0.25                              # class of vector quantization
+        self.algo.act.expert_checkpoints = []                       # paths to loading expert critics 
