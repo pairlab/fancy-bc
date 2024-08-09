@@ -359,28 +359,32 @@ class CQL(PolicyAlgo, ValueAlgo):
 
         info["actor/loss"] = policy_loss
 
-        # Take a training step if we're not validating
         if not validate:
-            # Update batch step
-            self._num_batch_steps += 1
-            if self.automatic_entropy_tuning:
-                # Alpha
-                self.optimizers["entropy"].zero_grad()
-                entropy_weight_loss.backward()
-                self.optimizers["entropy"].step()
-                info["entropy_grad_norms"] = (
-                    self.log_entropy_weight.grad.data.norm(2).pow(2).item()
-                )
+            info.update(self._update_actor(entropy_weight_loss, policy_loss))
+        return info
 
-            # Policy
-            actor_grad_norms = TorchUtils.backprop_for_loss(
-                net=self.nets["actor"],
-                optim=self.optimizers["actor"],
-                loss=policy_loss,
-                max_grad_norm=self.algo_config.actor.max_gradient_norm,
-            )
-            # Add info
-            info["actor/grad_norms"] = actor_grad_norms
+    def _update_actor(self, entropy_weight_loss, policy_loss):
+        info = OrderedDict()
+
+        # Take a training step if we're not validating
+        # Update batch step
+        self._num_batch_steps += 1
+        if self.automatic_entropy_tuning:
+            # Alpha
+            self.optimizers["entropy"].zero_grad()
+            entropy_weight_loss.backward()
+            self.optimizers["entropy"].step()
+            info["entropy_grad_norms"] = self.log_entropy_weight.grad.data.norm(2).pow(2).item()
+
+        # Policy
+        actor_grad_norms = TorchUtils.backprop_for_loss(
+            net=self.nets["actor"],
+            optim=self.optimizers["actor"],
+            loss=policy_loss,
+            max_grad_norm=self.algo_config.actor.max_gradient_norm,
+        )
+        # Add info
+        info["actor/grad_norms"] = actor_grad_norms
 
         # Return stats
         return info
@@ -441,21 +445,13 @@ class CQL(PolicyAlgo, ValueAlgo):
 
         # Get predicted Q-values from taken actions
         q_preds = [
-            critic(
-                obs_dict=batch["obs"],
-                acts=batch["actions"],
-                goal_dict=batch["goal_obs"],
-            )
+            critic(obs_dict=batch["obs"], acts=batch["actions"], goal_dict=batch["goal_obs"])
             for critic in self.nets["critic"]
         ]
 
         # Sample actions at the current and next step
-        curr_dist = self.nets["actor"].forward_train(
-            obs_dict=batch["obs"], goal_dict=batch["goal_obs"]
-        )
-        next_dist = self.nets["actor"].forward_train(
-            obs_dict=batch["next_obs"], goal_dict=batch["goal_obs"]
-        )
+        curr_dist = self.nets["actor"].forward_train(obs_dict=batch["obs"], goal_dict=batch["goal_obs"])
+        next_dist = self.nets["actor"].forward_train(obs_dict=batch["next_obs"], goal_dict=batch["goal_obs"])
         next_actions, next_log_prob = self._get_actions_and_log_prob(dist=next_dist)
 
         # Don't capture gradients here, since the critic target network doesn't get trained (only soft updated)
@@ -499,22 +495,12 @@ class CQL(PolicyAlgo, ValueAlgo):
             q_target = batch["rewards"] + done_mask_batch * self.discount * target_qs
 
         # Calculate CQL stuff
-        cql_random_actions = (
-            torch.FloatTensor(N, B, A).uniform_(-1.0, 1.0).to(self.device)
-        )  # shape (N, B, A)
+        cql_random_actions = torch.FloatTensor(N, B, A).uniform_(-1.0, 1.0).to(self.device)  # shape (N, B, A)
         cql_random_log_prob = np.log(0.5**A)
-        cql_curr_actions, cql_curr_log_prob = self._get_actions_and_log_prob(
-            dist=curr_dist, sample_shape=(N,)
-        )  # shape (N, B, A) and (N, B, 1)
-        cql_next_actions, cql_next_log_prob = self._get_actions_and_log_prob(
-            dist=next_dist, sample_shape=(N,)
-        )  # shape (N, B, A) and (N, B, 1)
-        cql_curr_log_prob = (
-            cql_curr_log_prob.squeeze(dim=-1).permute(1, 0).detach()
-        )  # shape (B, N)
-        cql_next_log_prob = (
-            cql_next_log_prob.squeeze(dim=-1).permute(1, 0).detach()
-        )  # shape (B, N)
+        cql_curr_actions, cql_curr_log_prob = self._get_actions_and_log_prob(dist=curr_dist, sample_shape=(N,))  # shape (N, B, A) and (N, B, 1)
+        cql_next_actions, cql_next_log_prob = self._get_actions_and_log_prob(dist=next_dist, sample_shape=(N,))  # shape (N, B, A) and (N, B, 1)
+        cql_curr_log_prob = cql_curr_log_prob.squeeze(dim=-1).permute(1, 0).detach()  # shape (B, N)
+        cql_next_log_prob = cql_next_log_prob.squeeze(dim=-1).permute(1, 0).detach()  # shape (B, N)
         q_cats = []  # Each entry shape will be (B, N)
 
         for critic, q_pred in zip(self.nets["critic"], q_preds):
@@ -573,43 +559,48 @@ class CQL(PolicyAlgo, ValueAlgo):
 
         # Run gradient descent if we're not validating
         if not validate:
-            # Train CQL weight if tuning automatically
-            if self.automatic_cql_tuning:
-                cql_weight_loss = -torch.stack(cql_losses).mean()
-                info["critic/cql_weight_loss"] = (
-                    cql_weight_loss.item()
-                )  # Make sure to not store computation graph since we retain graph after backward() call
-                self.optimizers["cql"].zero_grad()
-                cql_weight_loss.backward(retain_graph=True)
-                self.optimizers["cql"].step()
-                info["critic/cql_grad_norms"] = (
-                    self.log_cql_weight.grad.data.norm(2).pow(2).item()
-                )
+            info.update(self._update_critic(cql_losses, critic_losses))
+        return info
 
-            # Train critics
-            for i, (critic_loss, critic, critic_target, optimizer) in enumerate(
-                zip(
-                    critic_losses,
-                    self.nets["critic"],
-                    self.nets["critic_target"],
-                    self.optimizers["critic"],
+    def _update_critic(self, cql_losses, critic_losses):
+        info = OrderedDict()
+        # Train CQL weight if tuning automatically
+        if self.automatic_cql_tuning:
+            cql_weight_loss = -torch.stack(cql_losses).mean()
+            info["critic/cql_weight_loss"] = (
+                cql_weight_loss.item()
+            )  # Make sure to not store computation graph since we retain graph after backward() call
+            self.optimizers["cql"].zero_grad()
+            cql_weight_loss.backward(retain_graph=True)
+            self.optimizers["cql"].step()
+            info["critic/cql_grad_norms"] = (
+                self.log_cql_weight.grad.data.norm(2).pow(2).item()
+            )
+
+        # Train critics
+        for i, (critic_loss, critic, critic_target, optimizer) in enumerate(
+            zip(
+                critic_losses,
+                self.nets["critic"],
+                self.nets["critic_target"],
+                self.optimizers["critic"],
+            )
+        ):
+            retain_graph = i < (len(critic_losses) - 1)
+            critic_grad_norms = TorchUtils.backprop_for_loss(
+                net=critic,
+                optim=optimizer,
+                loss=critic_loss,
+                max_grad_norm=self.algo_config.critic.max_gradient_norm,
+                retain_graph=retain_graph,
+            )
+            info[f"critic/critic{i+1}_grad_norms"] = critic_grad_norms
+            with torch.no_grad():
+                TorchUtils.soft_update(
+                    source=critic,
+                    target=critic_target,
+                    tau=self.algo_config.target_tau,
                 )
-            ):
-                retain_graph = i < (len(critic_losses) - 1)
-                critic_grad_norms = TorchUtils.backprop_for_loss(
-                    net=critic,
-                    optim=optimizer,
-                    loss=critic_loss,
-                    max_grad_norm=self.algo_config.critic.max_gradient_norm,
-                    retain_graph=retain_graph,
-                )
-                info[f"critic/critic{i+1}_grad_norms"] = critic_grad_norms
-                with torch.no_grad():
-                    TorchUtils.soft_update(
-                        source=critic,
-                        target=critic_target,
-                        tau=self.algo_config.target_tau,
-                    )
 
         # Return stats
         return info

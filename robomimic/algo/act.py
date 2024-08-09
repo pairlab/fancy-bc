@@ -76,7 +76,9 @@ class ACT(BC_VAE):
                          'task_name': self.global_config.experiment.name,
                          'seed': self.global_config.train.seed,
                          'num_steps': self.global_config.train.num_epochs,
-                         'action_dim': self.global_config.train.action_config[self.action_key]['dim']
+                         'action_dim': self.global_config.train.action_config[self.action_key]['dim'],
+                         'no_encoder': self.algo_config.loss.kl_weight == 0.0,
+                         'policy_class': 'ACT'
                          }
 
         self.kl_weight = self.algo_config.loss.kl_weight
@@ -198,7 +200,8 @@ class ACT(BC_VAE):
         images = []
         for cam_name in self.camera_keys:
             image = batch['obs'][cam_name]
-            image = self.normalize(image)
+            if not self.global_config.train.hdf5_normalize_obs:
+                image = self.normalize(image)
             image = image.unsqueeze(axis=1)
             images.append(image)
         images = torch.cat(images, axis=1)
@@ -211,7 +214,7 @@ class ACT(BC_VAE):
 
         a_hat, is_pad_hat, (mu, logvar), probs, gt_labels = self.nets["policy"](qpos, images, env_state, actions, is_pad)
         loss_dict = dict()
-        if self.use_vq:
+        if self.use_vq or self.kl_weight == 0.0:
             total_kld = [torch.tensor(0.0)]
         else:
             total_kld, dim_wise_kld, mean_kld = self.kl_divergence(mu, logvar)
@@ -250,7 +253,8 @@ class ACT(BC_VAE):
         images = []
         for cam_name in self.camera_keys:
             image = obs_dict[cam_name]
-            image = self.normalize(image)
+            if not self.global_config.train.hdf5_normalize_obs:
+                image = self.normalize(image)
             image = image.unsqueeze(axis=1)
             images.append(image)
         images = torch.cat(images, axis=1)
