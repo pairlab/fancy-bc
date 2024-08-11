@@ -25,6 +25,7 @@ from robomimic.utils.dataset import SequenceDataset, R2D2Dataset, MetaDataset, P
 from robomimic.envs.env_base import EnvBase
 from robomimic.envs.wrappers import EnvWrapper
 from robomimic.algo import RolloutPolicy
+from robomimic.algo.distillation import ExtendableSequenceDataset
 from tianshou.env import SubprocVectorEnv
 
 
@@ -182,9 +183,10 @@ def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=Non
     meta_ds_kwargs = config.train.get("meta_ds_kwargs", {})
     meta_ds_classes = {"MetaDataset": MetaDataset, "PadMetaDataset": PadMetaDataset}
     meta_ds_class = meta_ds_classes.get(config.train.get("meta_ds_class", "MetaDataset"), MetaDataset)
+    ds_class_map = {"r2d2": R2D2Dataset, "sequence": SequenceDataset, "extendable": ExtendableSequenceDataset, "meta": MetaDataset}
 
     dataset = get_dataset(
-        ds_class=R2D2Dataset if config.train.data_format == "r2d2" else SequenceDataset,
+        ds_class=ds_class_map.get(config.train.data_format, SequenceDataset),
         ds_kwargs=ds_kwargs,
         ds_weights=ds_weights,
         ds_langs=ds_langs,

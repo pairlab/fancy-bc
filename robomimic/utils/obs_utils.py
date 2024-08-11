@@ -504,8 +504,6 @@ def normalize_dict(dict, normalization_stats):
         if shape_len_diff == 1:
             offset = offset[0]
             scale = scale[0]
-        offset = offset.to(dict[m].device)
-        scale = scale.to(dict[m].device)
 
         dict[m] = (dict[m] - offset) / scale
 

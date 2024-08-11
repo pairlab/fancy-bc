@@ -19,6 +19,7 @@ import h5py
 
 import robomimic
 import robomimic.utils.file_utils as FileUtils
+import robomimic.utils.env_utils as EnvUtils
 import robomimic.utils.torch_utils as TorchUtils
 import robomimic.utils.tensor_utils as TensorUtils
 from robomimic.algo import RolloutPolicy
@@ -173,7 +174,7 @@ def eval_myo(ckpt_path):
         verbose=True
     )
      
-    config, _ = config_from_checkpoint(algo_name=ckpt_dict["algo_name"], ckpt_dict=ckpt_dict, verbose=False)
+    config, _ = FileUtils.config_from_checkpoint(algo_name=ckpt_dict["algo_name"], ckpt_dict=ckpt_dict, verbose=False)
     env_meta = FileUtils.get_env_metadata_from_dataset(dataset_path=config.train.data[0]["path"])
     shape_meta = FileUtils.get_shape_metadata_from_dataset(
         dataset_path=config.train.data[0]["path"],
@@ -288,9 +289,10 @@ def eval_bidexhands(task, ckpt_path, rlgames, hdf5_path=None):
         device=env.device
     )
     print(stats)
-    visualize_feature_layer(policy.policy, env, hdf5_path)
+    visualize_feature_layer(policy.policy, env, hdf5_path=hdf5_path)
 
-def visualize_feature_layer(policy, env, obs_dict=None, cam_obs_keys=None, data=None):
+def visualize_feature_layer(policy, env, obs_dict=None, cam_obs_keys=None, hdf5_path=None):
+    data = h5py.File(hdf5_path, "r")
     obs_encoder = policy.nets['policy'].nets['encoder'].nets['obs']
     if cam_obs_keys is None:
         cam_obs_keys = list(filter(lambda x: "camera" in x, list(obs_encoder.obs_nets.keys())))
@@ -306,7 +308,7 @@ def visualize_feature_layer(policy, env, obs_dict=None, cam_obs_keys=None, data=
 
     print(input_image.shape)
     breakpoint()
-    image_encoder = obs_nets[cam_obs_keys[0]]
+    image_encoder = obs_encoder.obs_nets[cam_obs_keys[0]]
     feature_maps_layer, softmax_layer = image_encoder.nets[0], image_encoder.nets[1]
     make_model_img_feature_plot(hdf5_path, "", input_image, feature_maps_layer, softmax_layer)
 

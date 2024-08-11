@@ -1115,6 +1115,7 @@ class PadMetaDataset(MetaDataset):
                 pad_to_shape = self.pad_to_shape[k]
                 pad_width = [(0, 0)] + [(0, max(dim - current_dim, 0)) for dim, current_dim in zip(pad_to_shape, current_shape)]
                 x[k] = np.pad(x[k], pad_width=pad_width, mode="constant")
+        meta["ds_id"] = np.digitize(index, self._ds_ind_bins) - 1
 
         return meta
 
