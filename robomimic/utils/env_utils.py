@@ -41,6 +41,9 @@ def get_env_class(env_meta=None, env_type=None, env=None):
     elif env_type == EB.EnvType.TDMPC_TYPE:
         from robomimic.envs.env_gym import EnvMyo
         return EnvMyo
+    elif env_type == EB.EnvType.IGENVS_TYPE:
+        from robomimic.envs.env_ig import EnvIsaacGym
+        return EnvIsaacGym
     elif env_type == EB.EnvType.IG_MOMART_TYPE:
         from robomimic.envs.env_ig_momart import EnvGibsonMOMART
         return EnvGibsonMOMART
