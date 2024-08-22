@@ -24,6 +24,20 @@ class DaggerBC_VAE(BC_VAE):
         self.num_rollouts = self.dagger_config.rollout.num_rollouts
         self.num_epochs = self.dagger_config.num_epochs
 
+    def get_action(self, obs_dict, goal_dict=None):
+        """
+        Get policy action outputs.
+
+        Args:
+            obs_dict (dict): current observation
+            goal_dict (dict): (optional) goal
+
+        Returns:
+            action (torch.Tensor): action tensor
+        """
+        assert not self.nets.training
+        return self.nets["policy"](obs_dict, goal_dict=goal_dict)
+
     def get_beta(self, epoch):
         if self.beta_schedule == "linear":
             return self.beta_start + (self.beta_end - self.beta_start) * (
@@ -211,6 +225,84 @@ class ExtendableSequenceDataset(SequenceDataset):
             self.load_demo_info(filter_by_attribute=self.filter_by_attribute, hdf5_file=hdf5_file)
         
         self.build_data_indexing()
+
+    def load_demo_info(self, filter_by_attribute=None, demos=None, hdf5_file=None):
+        """
+        Args:
+            filter_by_attribute (str): if provided, use the provided filter key
+                to select a subset of demonstration trajectories to load
+
+            demos (list): list of demonstration keys to load from the hdf5 file. If 
+                omitted, all demos in the file (or under the @filter_by_attribute 
+                filter key) are used.
+        """
+        if hdf5_file is None:
+            hdf5_file = self.hdf5_file
+
+        # filter demo trajectory by mask
+        if demos is not None:
+            if hasattr(self, 'demos'):
+                self.demos.extend(demos)
+            else:
+                self.demos = demos
+        elif filter_by_attribute is not None:
+            new_demos = [elem.decode("utf-8") for elem in np.array(hdf5_file["mask/{}".format(filter_by_attribute)][:])]
+            if hasattr(self, 'demos'):
+                self.demos.extend(new_demos)
+            else:
+                self.demos = new_demos
+        else:
+            new_demos = list(hdf5_file["data"].keys())
+            if hasattr(self, 'demos'):
+                self.demos.extend(new_demos)
+            else:
+                self.demos = new_demos
+
+        # sort demo keys
+        inds = np.argsort([int(elem[5:]) for elem in self.demos])
+        self.demos = [self.demos[i] for i in inds]
+
+        self.n_demos = len(self.demos)
+
+        # keep internal index maps to know which transitions belong to which demos
+        if not hasattr(self, '_index_to_demo_id'):
+            self._index_to_demo_id = dict()  # maps every index to a demo id
+        if not hasattr(self, '_demo_id_to_start_indices'):
+            self._demo_id_to_start_indices = dict()  # gives start index per demo id
+        if not hasattr(self, '_demo_id_to_demo_length'):
+            self._demo_id_to_demo_length = dict()
+        if not hasattr(self, '_demo_id_to_hdf5_file'):
+            self._demo_id_to_hdf5_file = dict()  # maps demo ranges to specific hdf5 files
+
+        # determine index mapping
+        if not hasattr(self, 'total_num_sequences'):
+            self.total_num_sequences = 0
+
+        # Get the start index of new demos
+        start_index = len(self._demo_id_to_start_indices)
+
+        for ep in self.demos[start_index:]:
+            demo_length = hdf5_file["data/{}".format(ep)].attrs["num_samples"]
+            self._demo_id_to_start_indices[ep] = self.total_num_sequences
+            self._demo_id_to_demo_length[ep] = demo_length
+            self._demo_id_to_hdf5_file[ep] = hdf5_file
+
+            num_sequences = demo_length
+            # determine actual number of sequences taking into account whether to pad for frame_stack and seq_length
+            if not self.pad_frame_stack:
+                num_sequences -= (self.n_frame_stack - 1)
+            if not self.pad_seq_length:
+                num_sequences -= (self.seq_length - 1)
+
+            if self.pad_seq_length:
+                assert demo_length >= 1  # sequence needs to have at least one sample
+                num_sequences = max(num_sequences, 1)
+            else:
+                assert num_sequences >= 1  # assume demo_length >= (self.n_frame_stack - 1 + self.seq_length)
+
+            for _ in range(num_sequences):
+                self._index_to_demo_id[self.total_num_sequences] = ep
+                self.total_num_sequences += 1
 
     def add(self, rollouts):
         dataset_path = os.path.join(self.new_hdf5_file_folder, f"{self.new_hdf5_cnt}.hdf5")

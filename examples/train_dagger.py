@@ -8,12 +8,15 @@ To run a training session, use the following command:
 """
 import argparse
 import os
-
+import json
 import robomimic
 import robomimic.utils.torch_utils as TorchUtils
 import robomimic.utils.test_utils as TestUtils
 import robomimic.utils.obs_utils as ObsUtils
+import robomimic.utils.file_utils as FileUtils
+import robomimic.utils.env_utils as EnvUtils
 import robomimic.macros as Macros
+import hydra
 from robomimic.config import config_factory
 from robomimic.scripts.train import train
 from robomimic.algo import RolloutPolicy
@@ -33,13 +36,12 @@ def get_config(dataset_path=None, output_dir=None):
 
     # set config attributes specific to DAgger
     config.algo_name = "dagger"
-    config.dagger = config_factory(algo_name="dagger").dagger
-    config.dagger.num_epochs = 50
-    config.dagger.rollout.beta.schedule_type = "linear"
-    config.dagger.rollout.beta.start = 1.0
-    config.dagger.rollout.beta.end = 0.0
-    config.dagger.rollout.horizon = 400
-    config.dagger.rollout.num_rollouts = 50
+    config.experiment.num_epochs = 50
+    config.experiment.rollout.beta.schedule_type = "linear"
+    config.experiment.rollout.beta.start = 1.0
+    config.experiment.rollout.beta.end = 0.0
+    config.experiment.rollout.horizon = 400
+    config.experiment.rollout.num_rollouts = 50
 
     # set dataset and output directory
     config.train.data = dataset_path
@@ -58,7 +60,7 @@ def get_config(dataset_path=None, output_dir=None):
     config.train.hdf5_normalize_obs = False
     config.train.hdf5_filter_key = "train"
     config.train.hdf5_validation_filter_key = "valid"
-    config.train.seq_length = 1
+    config.train.seq_length = 10
     config.train.dataset_keys = ("actions", "rewards", "dones")
     config.train.goal_mode = None
     config.train.cuda = True
@@ -67,16 +69,54 @@ def get_config(dataset_path=None, output_dir=None):
 
     return config
 
+
+def load_policy(env, checkpoint_file_path, expert_cfg):
+    from pathlib import Path
+    from gym import spaces
+    from isaacgymenvs.utils.reformat import omegaconf_to_dict
+    from rl_games.algos_torch.network_builder import A2CBuilder
+    from omegaconf import OmegaConf
+    from isaacgymenvs.learning import actor_network_builder
+    from rl_games.common import env_configurations
+    from rl_games.algos_torch import players, model_builder
+
+    model_builder.register_network("actor_critic_dict", lambda **kwargs: actor_network_builder.A2CBuilder())
+
+    env_info = env_configurations.get_env_info(env.env)
+
+    env_info = env_configurations.get_env_info(env.env)
+    params = expert_cfg["train"]["params"]
+    params["config"]["env_info"] = env_info
+    algo = params["algo"]["name"]
+    if algo == "a2c_continuous":
+        agent = players.PpoPlayerContinuous(params=params)
+        agent.restore(checkpoint_file_path)
+        return agent
+    params = omegaconf_to_dict(expert_cfg["train"]["params"])
+    params["config"]["env_info"] = env_info
+    algo = params["algo"]["name"]
+    return agent
+
+
 def main(args):
     # set torch device
     device = TorchUtils.get_torch_device(try_to_use_cuda=True)
 
     # load config
-    config = get_config(dataset_path=args.dataset, output_dir=args.output)
+    if args.config is not None:
+        ext_cfg = json.load(open(args.config, 'r'))
+        config = config_factory(ext_cfg["algo_name"])
+        # update config with external json - this will throw errors if
+        # the external config has keys not present in the base algo config
+        with config.values_unlocked():
+            config.update(ext_cfg)
+    else:
+        # Otherwise, use default config
+        config = get_config(dataset_path=args.dataset, output_dir=args.output)
 
     # load training environment
-    env_meta = ObsUtils.load_env_metadata(config.train.data)
-    env = EnvBase.create(env_meta=env_meta)
+    env_meta = FileUtils.get_env_metadata_from_dataset(config.train.data)
+    env = EnvUtils.create_env_from_metadata(env_meta=env_meta)
 
     # create DaggerBC_VAE instance
     bc_vae = DaggerBC_VAE(
@@ -86,7 +126,7 @@ def main(args):
         device=device,
     )
 
-    policy = load_policy(args.expert_policy)
+    policy = load_policy(env, args.expert_policy, args.expert_config)
     # load expert policy
     expert_policy = RolloutPolicy(
         policy,
@@ -127,6 +167,9 @@ if __name__ == "__main__":
         required=True,
         help="path to expert policy checkpoint",
     )
+
+    parser.add_argument("--config", type=str, help="path to config")
+    parser.add_argument("--expert_config", type=str, help="path to expert config")
 
     args = parser.parse_args()
 

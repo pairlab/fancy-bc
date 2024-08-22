@@ -306,8 +306,6 @@ def visualize_feature_layer(policy, env, obs_dict=None, cam_obs_keys=None, hdf5_
     input_dict = policy.policy.process_batch_for_training(tensor_data_dict)
     input_dict = policy.policy.postprocess_batch_for_training(input_dict, obs_normalization_stats=None)
 
-    print(input_image.shape)
-    breakpoint()
     image_encoder = obs_encoder.obs_nets[cam_obs_keys[0]]
     feature_maps_layer, softmax_layer = image_encoder.nets[0], image_encoder.nets[1]
     make_model_img_feature_plot(hdf5_path, "", input_image, feature_maps_layer, softmax_layer)

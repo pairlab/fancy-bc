@@ -3,8 +3,8 @@ from robomimic.config.bc_config import BCConfig
 class DaggerConfig(BCConfig):
     ALGO_NAME = "dagger"
 
-    def __init__(self):
-        super(DaggerConfig, self).__init__()
+    def __init__(self, dict_to_load=None):
+        super(DaggerConfig, self).__init__(dict_to_load)
 
     def algo_config(self):
         """
@@ -21,6 +21,7 @@ class DaggerConfig(BCConfig):
         self.train.num_iterations_per_epoch = 100
         self.train.batch_size = 64
         self.train.seq_length = 1
+        self.train.hdf5_load_next_obs = False
         self.train.data_format = "extendable"
 
         # Rollout parameters
@@ -32,8 +33,6 @@ class DaggerConfig(BCConfig):
         self.experiment.rollout.beta.beta_end = 0.0
 
         # Dagger specific parameters
-        self.algo.num_valid_batches = 50
-        self.algo.num_eval_games = 100
         self.algo.collect_expert_dataset = False
         self.algo.num_warmup_iterations = 0
         self.algo.num_batches = -1
